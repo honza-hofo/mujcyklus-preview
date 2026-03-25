@@ -1,0 +1,2525 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#F48FB1">
+<meta name="description" content="MůjCyklus - Chytrý tracker menstruačního cyklu">
+<link rel="manifest" href="manifest.json">
+<title>MůjCyklus</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --pink: #F48FB1;
+  --pink-light: #FCE4EC;
+  --pink-dark: #EC407A;
+  --lavender: #E8DEF8;
+  --lavender-light: #F3EEFA;
+  --white: #FFFFFF;
+  --bg: #FFFFFF;
+  --card-bg: #FFFFFF;
+  --dark: #333333;
+  --dark-secondary: #555;
+  --gray: #888;
+  --gray-light: #F5F5F5;
+  --border: #eee;
+  --period: #E57373;
+  --period-light: #FFCDD2;
+  --fertile: #81C784;
+  --fertile-light: #C8E6C9;
+  --ovulation: #4CAF50;
+  --pms: #FFB74D;
+  --pms-light: #FFE0B2;
+  --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  --shadow-lg: 0 -4px 24px rgba(0,0,0,0.12);
+  --radius: 16px;
+  --radius-sm: 10px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --nav-height: 70px;
+}
+
+[data-theme="dark"] {
+  --bg: #1a1a2e;
+  --card-bg: #16213e;
+  --white: #1a1a2e;
+  --dark: #e0e0e0;
+  --dark-secondary: #bbb;
+  --gray: #999;
+  --gray-light: #1e2a4a;
+  --border: #2a3a5a;
+  --pink-light: #2a1a2e;
+  --lavender-light: #1e1a3e;
+  --period-light: #3a1a1a;
+  --fertile-light: #1a3a1a;
+  --pms-light: #3a2a1a;
+  --shadow: 0 2px 12px rgba(0,0,0,0.3);
+  --shadow-lg: 0 -4px 24px rgba(0,0,0,0.4);
+}
+
+html { height: 100%; -webkit-text-size-adjust: 100%; }
+
+body {
+  font-family: 'Nunito', -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--dark);
+  height: 100%;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  transition: background 0.3s, color 0.3s;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  padding-top: calc(env(safe-area-inset-top, 12px) + 8px);
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--border);
+  z-index: 100;
+}
+.header h1 {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--pink);
+}
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+.header-btn {
+  width: 40px; height: 40px;
+  border: none;
+  background: var(--gray-light);
+  border-radius: 50%;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: background 0.2s;
+}
+.header-btn:active { transform: scale(0.95); }
+.notif-badge {
+  position: absolute;
+  top: 2px; right: 2px;
+  width: 8px; height: 8px;
+  background: var(--period);
+  border-radius: 50%;
+  display: none;
+}
+.notif-badge.show { display: block; }
+
+/* Tab Content */
+.tab-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: calc(var(--nav-height) + var(--safe-bottom) + 16px);
+}
+
+/* Bottom Nav */
+.bottom-nav {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  background: var(--card-bg);
+  border-top: 1px solid var(--border);
+  padding-bottom: var(--safe-bottom);
+  z-index: 100;
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+}
+.nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 4px;
+  gap: 2px;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: var(--gray);
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  transition: color 0.2s;
+  min-height: 54px;
+}
+.nav-item.active { color: var(--pink); }
+.nav-item .icon { font-size: 22px; }
+.nav-item:active { opacity: 0.7; }
+
+/* Cards */
+.card {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+  margin: 8px 16px;
+  transition: background 0.3s;
+}
+
+/* Calendar */
+.cal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+}
+.cal-header h2 {
+  font-size: 18px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+.cal-nav {
+  width: 44px; height: 44px;
+  border: none;
+  background: var(--gray-light);
+  border-radius: 50%;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+.cal-nav:active { background: var(--lavender); }
+
+.cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  padding: 0 12px;
+  margin-bottom: 4px;
+}
+.cal-weekdays span {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gray);
+  padding: 4px 0;
+}
+
+.cal-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  padding: 0 12px;
+}
+.cal-day {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  position: relative;
+  border: none;
+  background: none;
+  color: var(--dark);
+  transition: all 0.15s;
+  min-width: 40px;
+  min-height: 40px;
+}
+.cal-day.empty { cursor: default; }
+.cal-day.today { border: 2px solid var(--pink); }
+.cal-day.period-day { background: var(--period-light); color: var(--period); }
+.cal-day.fertile-day { background: var(--fertile-light); color: var(--fertile); }
+.cal-day.ovulation-day { background: var(--ovulation); color: white; }
+.cal-day.pms-day { background: var(--pms-light); color: var(--pms); }
+.cal-day.selected { box-shadow: 0 0 0 2px var(--pink); }
+.cal-day:active:not(.empty) { transform: scale(0.9); }
+.cal-day .emoji-dot {
+  position: absolute;
+  bottom: 1px;
+  font-size: 8px;
+  line-height: 1;
+}
+
+.cal-legend {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  padding: 12px 16px;
+  flex-wrap: wrap;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--gray);
+}
+.legend-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+}
+
+/* Day Detail Panel */
+.day-panel {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%) translateY(100%);
+  width: 100%;
+  max-width: 480px;
+  max-height: 80vh;
+  background: var(--card-bg);
+  border-radius: 20px 20px 0 0;
+  box-shadow: var(--shadow-lg);
+  z-index: 200;
+  transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+  overflow-y: auto;
+  padding-bottom: calc(var(--safe-bottom) + 16px);
+}
+.day-panel.open { transform: translateX(-50%) translateY(0); }
+.day-panel-handle {
+  width: 36px; height: 4px;
+  background: var(--gray);
+  border-radius: 2px;
+  margin: 12px auto;
+  opacity: 0.3;
+}
+.day-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 20px 16px;
+}
+.day-panel-header h3 { font-size: 18px; font-weight: 700; }
+.day-panel-close {
+  width: 36px; height: 36px;
+  border: none;
+  background: var(--gray-light);
+  border-radius: 50%;
+  font-size: 16px;
+  cursor: pointer;
+}
+.day-panel-body { padding: 0 20px; }
+
+.period-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--period-light);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  cursor: pointer;
+  border: none;
+  width: 100%;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--period);
+  transition: all 0.2s;
+}
+.period-toggle.active { background: var(--period); color: white; }
+.period-toggle:active { transform: scale(0.98); }
+
+.flow-selector {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.flow-btn {
+  flex: 1;
+  padding: 10px;
+  border: 2px solid var(--border);
+  background: var(--card-bg);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: center;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dark);
+  transition: all 0.2s;
+}
+.flow-btn.active { border-color: var(--period); background: var(--period-light); color: var(--period); }
+.flow-btn .drops { font-size: 18px; display: block; margin-bottom: 2px; }
+
+.section-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--gray);
+  margin: 16px 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.symptoms-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.symptom-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  border: 2px solid var(--border);
+  background: var(--card-bg);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--dark-secondary);
+  transition: all 0.2s;
+  min-height: 60px;
+}
+.symptom-btn.active { border-color: var(--pink); background: var(--pink-light); color: var(--pink-dark); }
+.symptom-btn .sym-emoji { font-size: 22px; }
+.symptom-btn:active { transform: scale(0.95); }
+
+.temp-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.temp-input {
+  flex: 1;
+  padding: 12px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  background: var(--card-bg);
+  color: var(--dark);
+  outline: none;
+  transition: border-color 0.2s;
+}
+.temp-input:focus { border-color: var(--pink); }
+
+.notes-area {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 14px;
+  resize: none;
+  height: 80px;
+  background: var(--card-bg);
+  color: var(--dark);
+  outline: none;
+  margin-bottom: 16px;
+  transition: border-color 0.2s;
+}
+.notes-area:focus { border-color: var(--pink); }
+
+.intercourse-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--pink-light);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  cursor: pointer;
+  border: none;
+  width: 100%;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--pink);
+  transition: all 0.2s;
+}
+.intercourse-toggle.active { background: var(--pink); color: white; }
+
+.save-btn {
+  width: 100%;
+  padding: 16px;
+  background: var(--pink);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-bottom: 8px;
+  transition: all 0.2s;
+}
+.save-btn:active { transform: scale(0.98); opacity: 0.9; }
+
+/* Overlay for day panel */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 199;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+.overlay.show { opacity: 1; pointer-events: auto; }
+
+/* Stats Tab */
+.progress-ring-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+}
+.progress-ring { position: relative; width: 160px; height: 160px; }
+.progress-ring svg { transform: rotate(-90deg); }
+.progress-ring-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.progress-ring-day { font-size: 36px; font-weight: 800; color: var(--pink); }
+.progress-ring-label { font-size: 12px; color: var(--gray); font-weight: 600; }
+
+.phase-badge {
+  display: inline-block;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 700;
+  margin-top: 8px;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.stat-row:last-child { border: none; }
+.stat-label { font-size: 14px; color: var(--gray); }
+.stat-value { font-size: 16px; font-weight: 700; }
+
+.alert-card {
+  background: #FFF3E0;
+  border-left: 4px solid var(--pms);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  margin: 8px 16px;
+}
+[data-theme="dark"] .alert-card { background: #2a2a1e; }
+.alert-card .alert-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--pms);
+  margin-bottom: 4px;
+}
+.alert-card .alert-text { font-size: 13px; color: var(--dark-secondary); }
+
+.cycle-history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.cycle-history-item:last-child { border: none; }
+
+.mood-graph {
+  width: 100%;
+  height: 120px;
+  position: relative;
+  margin: 12px 0;
+}
+.mood-graph canvas { width: 100%; height: 100%; }
+
+/* Community Tab */
+.topic-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 8px 16px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.topic-tab {
+  padding: 8px 16px;
+  border: none;
+  background: var(--gray-light);
+  border-radius: 20px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dark-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+.topic-tab.active { background: var(--pink); color: white; }
+
+.chat-messages {
+  padding: 8px 16px;
+}
+.chat-bubble {
+  max-width: 80%;
+  padding: 10px 14px;
+  border-radius: 18px;
+  margin-bottom: 8px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.chat-bubble.other {
+  background: var(--gray-light);
+  border-bottom-left-radius: 4px;
+}
+.chat-bubble.self {
+  background: var(--pink-light);
+  margin-left: auto;
+  border-bottom-right-radius: 4px;
+}
+.chat-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--pink);
+  margin-bottom: 2px;
+}
+.chat-input-bar {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--card-bg);
+  border-top: 1px solid var(--border);
+  position: sticky;
+  bottom: 0;
+}
+.chat-input {
+  flex: 1;
+  padding: 10px 16px;
+  border: 2px solid var(--border);
+  border-radius: 24px;
+  font-family: inherit;
+  font-size: 14px;
+  background: var(--gray-light);
+  color: var(--dark);
+  outline: none;
+}
+.chat-send {
+  width: 44px; height: 44px;
+  border: none;
+  background: var(--pink);
+  color: white;
+  border-radius: 50%;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+/* Profile/Settings */
+.profile-section {
+  padding: 0 16px;
+}
+.setting-group {
+  margin-bottom: 20px;
+}
+.setting-group-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gray);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+.setting-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: var(--card-bg);
+  border-radius: var(--radius-sm);
+  margin-bottom: 4px;
+  box-shadow: var(--shadow);
+}
+.setting-item label {
+  font-size: 15px;
+  font-weight: 600;
+}
+.setting-item .value {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--pink);
+}
+
+/* Toggle switch */
+.toggle {
+  width: 52px; height: 30px;
+  background: var(--gray-light);
+  border: 2px solid var(--border);
+  border-radius: 15px;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s;
+  flex-shrink: 0;
+}
+.toggle.on { background: var(--pink); border-color: var(--pink); }
+.toggle::after {
+  content: '';
+  position: absolute;
+  width: 24px; height: 24px;
+  background: white;
+  border-radius: 50%;
+  top: 1px; left: 1px;
+  transition: transform 0.3s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.toggle.on::after { transform: translateX(22px); }
+
+/* Slider */
+.range-slider {
+  width: 120px;
+  -webkit-appearance: none;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--gray-light);
+  outline: none;
+}
+.range-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--pink);
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+/* Select dropdown */
+.setting-select {
+  padding: 8px 12px;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  background: var(--card-bg);
+  color: var(--dark);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  outline: none;
+}
+
+/* Action buttons */
+.action-btn {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-bottom: 8px;
+  transition: all 0.2s;
+}
+.action-btn:active { transform: scale(0.98); }
+.action-btn.primary { background: var(--pink); color: white; }
+.action-btn.secondary { background: var(--gray-light); color: var(--dark); }
+.action-btn.danger { background: #FFEBEE; color: var(--period); }
+
+/* Partner Tab */
+.share-code {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin: 16px 0;
+}
+.code-char {
+  width: 44px; height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gray-light);
+  border-radius: 10px;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--pink);
+  font-family: 'Courier New', monospace;
+}
+
+.privacy-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.privacy-item:last-child { border: none; }
+.privacy-check {
+  width: 24px; height: 24px;
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  background: var(--card-bg);
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.privacy-check.checked { background: var(--pink); border-color: var(--pink); color: white; }
+.privacy-label { font-size: 14px; font-weight: 600; }
+
+/* Notification Panel */
+.notif-panel {
+  position: fixed;
+  top: 0;
+  right: -100%;
+  width: 100%;
+  max-width: 480px;
+  height: 100%;
+  background: var(--bg);
+  z-index: 300;
+  transition: right 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+  overflow-y: auto;
+}
+.notif-panel.open { right: calc(50% - 240px); }
+@media (max-width: 480px) { .notif-panel.open { right: 0; } }
+.notif-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  padding-top: calc(env(safe-area-inset-top, 16px) + 8px);
+  border-bottom: 1px solid var(--border);
+}
+.notif-header h2 { font-size: 20px; font-weight: 700; }
+.notif-back {
+  width: 40px; height: 40px;
+  border: none;
+  background: var(--gray-light);
+  border-radius: 50%;
+  font-size: 18px;
+  cursor: pointer;
+}
+.notif-item {
+  display: flex;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.notif-icon {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.notif-text { font-size: 14px; line-height: 1.4; }
+.notif-time { font-size: 11px; color: var(--gray); margin-top: 4px; }
+
+/* Widget preview */
+.widget-preview {
+  background: linear-gradient(135deg, var(--pink-light), var(--lavender-light));
+  border-radius: 20px;
+  padding: 16px;
+  margin: 8px 16px;
+  text-align: center;
+}
+[data-theme="dark"] .widget-preview {
+  background: linear-gradient(135deg, #2a1a2e, #1e1a3e);
+}
+.widget-preview .widget-label {
+  font-size: 11px;
+  color: var(--gray);
+  margin-bottom: 8px;
+}
+.widget-preview .widget-content {
+  font-size: 18px;
+  font-weight: 700;
+}
+.widget-mini-ring {
+  width: 50px; height: 50px;
+  margin: 8px auto 0;
+}
+.widget-mini-ring svg { transform: rotate(-90deg); }
+
+/* Conception extras */
+.conception-card {
+  background: linear-gradient(135deg, var(--fertile-light), #E8F5E9);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin: 8px 16px;
+  text-align: center;
+}
+[data-theme="dark"] .conception-card {
+  background: linear-gradient(135deg, #1a2a1a, #1a3a2a);
+}
+.conception-card h3 { color: var(--ovulation); font-size: 16px; margin-bottom: 8px; }
+.conception-card p { font-size: 13px; color: var(--dark-secondary); line-height: 1.5; }
+
+/* Scrollbar */
+.tab-content::-webkit-scrollbar { width: 0; }
+
+/* Tab visibility */
+.tab-view { display: none; }
+.tab-view.active { display: block; }
+
+/* Version footer */
+.version-text {
+  text-align: center;
+  font-size: 12px;
+  color: var(--gray);
+  padding: 20px;
+}
+
+/* Confidence badge */
+.confidence {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--lavender-light);
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--pink-dark);
+}
+
+/* Regularity score */
+.regularity-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--gray-light);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+.regularity-fill {
+  height: 100%;
+  background: var(--pink);
+  border-radius: 4px;
+  transition: width 0.5s;
+}
+
+/* Print styles for doctor export */
+@media print {
+  body { background: white; color: black; }
+  .no-print { display: none !important; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- Header -->
+  <div class="header">
+    <h1>MůjCyklus</h1>
+    <div class="header-actions">
+      <button class="header-btn" onclick="openNotifPanel()">
+        🔔
+        <span class="notif-badge" id="notifBadge"></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Tab Content Area -->
+  <div class="tab-content" id="tabContent">
+
+    <!-- CALENDAR TAB -->
+    <div class="tab-view active" id="tabCalendar">
+      <div class="cal-header">
+        <button class="cal-nav" onclick="changeMonth(-1)">‹</button>
+        <h2 id="calTitle"></h2>
+        <button class="cal-nav" onclick="changeMonth(1)">›</button>
+      </div>
+      <div class="cal-weekdays">
+        <span>Po</span><span>Út</span><span>St</span><span>Čt</span><span>Pá</span><span>So</span><span>Ne</span>
+      </div>
+      <div class="cal-days" id="calDays"></div>
+      <div class="cal-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--period)"></div>Menstruace</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--fertile)"></div>Plodné dny</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--ovulation)"></div>Ovulace</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--pms)"></div>PMS</div>
+      </div>
+    </div>
+
+    <!-- STATS TAB -->
+    <div class="tab-view" id="tabStats">
+      <div class="progress-ring-container">
+        <div class="progress-ring">
+          <svg width="160" height="160">
+            <circle cx="80" cy="80" r="70" fill="none" stroke="var(--gray-light)" stroke-width="10"/>
+            <circle id="progressCircle" cx="80" cy="80" r="70" fill="none" stroke="var(--pink)" stroke-width="10" stroke-linecap="round" stroke-dasharray="440" stroke-dashoffset="440"/>
+          </svg>
+          <div class="progress-ring-center">
+            <div class="progress-ring-day" id="cycleDayNum">-</div>
+            <div class="progress-ring-label">den cyklu</div>
+          </div>
+        </div>
+        <div class="phase-badge" id="phaseBadge" style="background:var(--pink-light);color:var(--pink)">-</div>
+      </div>
+
+      <div class="card">
+        <div class="stat-row">
+          <span class="stat-label">Další menstruace</span>
+          <span class="stat-value" id="nextPeriodStat">-</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Pravděpodobnost</span>
+          <span id="confidenceStat"><span class="confidence">--%</span></span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Plodné okno</span>
+          <span class="stat-value" id="fertileWindowStat">-</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Průměrný cyklus</span>
+          <span class="stat-value" id="avgCycleStat">-</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Průměrná menstruace</span>
+          <span class="stat-value" id="avgPeriodStat">-</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="stat-row">
+          <span class="stat-label">Pravidelnost cyklu</span>
+          <span class="stat-value" id="regularityStat">-</span>
+        </div>
+        <div class="regularity-bar"><div class="regularity-fill" id="regularityFill" style="width:0%"></div></div>
+      </div>
+
+      <div id="healthAlerts"></div>
+
+      <div class="card" id="conceptionStatsCard" style="display:none">
+        <h3 style="font-size:15px;margin-bottom:12px;color:var(--ovulation)">🤰 Režim početí</h3>
+        <div class="stat-row">
+          <span class="stat-label">Nejplodnější den</span>
+          <span class="stat-value" id="mostFertileStat">-</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Test těhotenství</span>
+          <span class="stat-value" id="pregTestStat">-</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="font-size:15px;margin-bottom:12px">📊 Nálada v průběhu cyklu</h3>
+        <div class="mood-graph">
+          <canvas id="moodCanvas"></canvas>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--gray)">
+          <span>Den 1</span><span>Ovulace</span><span>Den 28</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="font-size:15px;margin-bottom:12px">📅 Historie cyklů</h3>
+        <div id="cycleHistory"></div>
+      </div>
+    </div>
+
+    <!-- COMMUNITY TAB -->
+    <div class="tab-view" id="tabCommunity">
+      <div class="topic-tabs" id="topicTabs">
+        <button class="topic-tab active" onclick="switchTopic(0)">Bolestivá menstruace</button>
+        <button class="topic-tab" onclick="switchTopic(1)">Snažíme se o miminko</button>
+        <button class="topic-tab" onclick="switchTopic(2)">Nepravidelný cyklus</button>
+      </div>
+      <div class="chat-messages" id="chatMessages"></div>
+      <div class="chat-input-bar">
+        <input class="chat-input" placeholder="Napiš zprávu..." id="chatInput">
+        <button class="chat-send" onclick="sendChat()">➤</button>
+      </div>
+    </div>
+
+    <!-- PROFILE TAB -->
+    <div class="tab-view" id="tabProfile">
+      <div class="profile-section" style="padding-top:16px">
+
+        <div class="setting-group">
+          <div class="setting-group-title">Zobrazení</div>
+          <div class="setting-item">
+            <label>Tmavý režim</label>
+            <div class="toggle" id="darkToggle" onclick="toggleDarkMode()"></div>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <div class="setting-group-title">Cyklus</div>
+          <div class="setting-item">
+            <label>Délka cyklu</label>
+            <div style="display:flex;align-items:center;gap:8px">
+              <input type="range" class="range-slider" min="21" max="35" value="28" id="cycleLenSlider" oninput="updateCycleLen()">
+              <span class="value" id="cycleLenVal">28 dní</span>
+            </div>
+          </div>
+          <div class="setting-item">
+            <label>Délka menstruace</label>
+            <div style="display:flex;align-items:center;gap:8px">
+              <input type="range" class="range-slider" min="3" max="7" value="5" id="periodLenSlider" oninput="updatePeriodLen()">
+              <span class="value" id="periodLenVal">5 dní</span>
+            </div>
+          </div>
+          <div class="setting-item">
+            <label>Luteální fáze</label>
+            <div style="display:flex;align-items:center;gap:8px">
+              <input type="range" class="range-slider" min="10" max="16" value="14" id="lutealSlider" oninput="updateLuteal()">
+              <span class="value" id="lutealVal">14 dní</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <div class="setting-group-title">Početí</div>
+          <div class="setting-item">
+            <label>Režim početí</label>
+            <div class="toggle" id="conceptionToggle" onclick="toggleConception()"></div>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <div class="setting-group-title">Antikoncepce</div>
+          <div class="setting-item">
+            <label>Typ</label>
+            <select class="setting-select" id="contraceptionType" onchange="saveSettings()">
+              <option value="none">Žádná</option>
+              <option value="pill">Pilulka</option>
+              <option value="iud">IUD (tělísko)</option>
+              <option value="implant">Implantát</option>
+              <option value="condom">Kondom</option>
+            </select>
+          </div>
+          <div class="setting-item" id="pillReminderSetting" style="display:none">
+            <label>Připomínka pilulky</label>
+            <input type="time" value="08:00" id="pillTime" class="setting-select" onchange="saveSettings()">
+          </div>
+          <div class="setting-item" id="iudExpirySetting" style="display:none">
+            <label>Expirace</label>
+            <input type="date" id="iudExpiry" class="setting-select" onchange="saveSettings()">
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <div class="setting-group-title">Export</div>
+          <button class="action-btn primary" onclick="exportDoctor()">📋 Exportovat pro lékaře</button>
+          <button class="action-btn secondary" onclick="exportJSON()">💾 Exportovat data (JSON)</button>
+        </div>
+
+        <div class="setting-group">
+          <div class="setting-group-title">Data</div>
+          <button class="action-btn danger" onclick="deleteAllData()">🗑️ Smazat všechna data</button>
+        </div>
+
+        <div class="widget-preview">
+          <div class="widget-label">📱 Widget na domovské obrazovce</div>
+          <div class="widget-content" id="widgetText">Den 14 | Plodné okno 🟢</div>
+          <div class="widget-mini-ring">
+            <svg width="50" height="50">
+              <circle cx="25" cy="25" r="20" fill="none" stroke="var(--gray-light)" stroke-width="4"/>
+              <circle id="widgetCircle" cx="25" cy="25" r="20" fill="none" stroke="var(--pink)" stroke-width="4" stroke-linecap="round" stroke-dasharray="126" stroke-dashoffset="63"/>
+            </svg>
+          </div>
+        </div>
+
+        <div class="version-text">MůjCyklus v2.0</div>
+      </div>
+    </div>
+
+    <!-- PARTNER TAB -->
+    <div class="tab-view" id="tabPartner">
+      <div class="card" style="margin-top:16px;text-align:center">
+        <h3 style="font-size:18px;margin-bottom:8px">💑 Párový mód</h3>
+        <p style="font-size:13px;color:var(--gray);margin-bottom:16px">Sdílej svůj cyklus s partnerem</p>
+        <div class="share-code" id="shareCode"></div>
+        <button class="action-btn secondary" style="margin-top:12px" onclick="generateShareCode()">Nový kód</button>
+      </div>
+
+      <div class="card">
+        <h3 style="font-size:15px;margin-bottom:12px">🔒 Co partner vidí</h3>
+        <div id="privacyControls"></div>
+      </div>
+
+      <div class="card">
+        <h3 style="font-size:15px;margin-bottom:12px">📧 Email partnera</h3>
+        <input type="email" class="temp-input" placeholder="email@example.com" id="partnerEmail" style="width:100%;margin-bottom:8px" onchange="saveSettings()">
+        <p style="font-size:12px;color:var(--gray)">Partner bude dostávat upozornění dle nastavení soukromí</p>
+      </div>
+
+      <div class="card">
+        <h3 style="font-size:15px;margin-bottom:12px">👁️ Náhled pro partnera</h3>
+        <div id="partnerPreview" style="font-size:13px;color:var(--dark-secondary);line-height:1.6"></div>
+        <a href="partner.html" target="_blank" style="display:block;text-align:center;margin-top:12px;color:var(--pink);font-weight:700;font-size:14px">Otevřít partnerský pohled →</a>
+      </div>
+
+      <div style="padding:16px">
+        <button class="action-btn danger" onclick="disconnectPartner()">Odpojit partnera</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Bottom Navigation -->
+  <div class="bottom-nav">
+    <button class="nav-item active" onclick="switchTab('Calendar')">
+      <span class="icon">📅</span>Kalendář
+    </button>
+    <button class="nav-item" onclick="switchTab('Stats')">
+      <span class="icon">📊</span>Přehled
+    </button>
+    <button class="nav-item" onclick="switchTab('Community')">
+      <span class="icon">💬</span>Komunita
+    </button>
+    <button class="nav-item" onclick="switchTab('Profile')">
+      <span class="icon">👤</span>Profil
+    </button>
+    <button class="nav-item" onclick="switchTab('Partner')">
+      <span class="icon">💑</span>Partner
+    </button>
+  </div>
+
+  <!-- Day Detail Panel -->
+  <div class="overlay" id="overlay" onclick="closeDayPanel()"></div>
+  <div class="day-panel" id="dayPanel">
+    <div class="day-panel-handle"></div>
+    <div class="day-panel-header">
+      <h3 id="dayPanelTitle">-</h3>
+      <button class="day-panel-close" onclick="closeDayPanel()">✕</button>
+    </div>
+    <div class="day-panel-body">
+      <button class="period-toggle" id="periodToggle" onclick="togglePeriod()">
+        <span>🔴 Menstruace</span>
+        <span id="periodToggleLabel">Zapnout</span>
+      </button>
+
+      <div id="flowSection" style="display:none">
+        <div class="section-title">Intenzita</div>
+        <div class="flow-selector">
+          <button class="flow-btn" onclick="setFlow('light')"><span class="drops">💧</span>Lehká</button>
+          <button class="flow-btn" onclick="setFlow('medium')"><span class="drops">💧💧</span>Střední</button>
+          <button class="flow-btn" onclick="setFlow('heavy')"><span class="drops">💧💧💧</span>Silná</button>
+        </div>
+      </div>
+
+      <div class="section-title">Symptomy</div>
+      <div class="symptoms-grid" id="symptomsGrid"></div>
+
+      <div class="section-title">Bazální teplota</div>
+      <div class="temp-input-row">
+        <span style="font-size:20px">🌡️</span>
+        <input type="number" class="temp-input" id="tempInput" placeholder="36.5" min="36.0" max="38.0" step="0.1">
+        <span style="font-size:14px;color:var(--gray)">°C</span>
+      </div>
+
+      <div id="intercourseSection" style="display:none">
+        <button class="intercourse-toggle" id="intercourseToggle" onclick="toggleIntercourse()">
+          <span>❤️ Pohlavní styk</span>
+          <span id="intercourseLabel">Ne</span>
+        </button>
+      </div>
+
+      <div class="section-title">Poznámky</div>
+      <textarea class="notes-area" id="notesArea" placeholder="Jak se dnes cítíš..."></textarea>
+
+      <button class="save-btn" onclick="saveDayData()">💾 Uložit</button>
+    </div>
+  </div>
+
+  <!-- Notification Panel -->
+  <div class="notif-panel" id="notifPanel">
+    <div class="notif-header">
+      <h2>🔔 Upozornění</h2>
+      <button class="notif-back" onclick="closeNotifPanel()">✕</button>
+    </div>
+    <div id="notifList"></div>
+  </div>
+</div>
+
+<script>
+// ========== DATA & STATE ==========
+const SYMPTOMS = [
+  { id: 'good_mood', emoji: '😊', label: 'Dobrá nálada' },
+  { id: 'bad_mood', emoji: '😔', label: 'Špatná nálada' },
+  { id: 'irritable', emoji: '😤', label: 'Podrážděnost' },
+  { id: 'nausea', emoji: '🤢', label: 'Nevolnost' },
+  { id: 'headache', emoji: '💆', label: 'Bolest hlavy' },
+  { id: 'cramps', emoji: '🤰', label: 'Křeče' },
+  { id: 'fatigue', emoji: '😴', label: 'Únava' },
+  { id: 'breast_tenderness', emoji: '💧', label: 'Citlivost prsou' },
+  { id: 'cravings', emoji: '🔥', label: 'Zvýšená chuť' },
+  { id: 'libido', emoji: '💕', label: 'Zvýšené libido' },
+  { id: 'insomnia', emoji: '💤', label: 'Nespavost' },
+  { id: 'crying', emoji: '😢', label: 'Plačtivost' },
+  { id: 'temperature', emoji: '🌡️', label: 'Teplota' },
+  { id: 'pill_taken', emoji: '💊', label: 'Antikoncepce' }
+];
+
+const MONTHS_CZ = ['Leden','Únor','Březen','Duben','Květen','Červen','Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
+const DAYS_SHORT = ['Po','Út','St','Čt','Pá','So','Ne'];
+
+const MOCK_COMMUNITY = {
+  0: [ // Bolestivá menstruace
+    { name: 'Květinka', text: 'Holky, co vám pomáhá na křeče? Ibalginu už mám dost 😫', time: '14:23' },
+    { name: 'Sluníčko', text: 'Mně pomáhá hřejivý polštářek na břicho a čaj z mateřídoušky 🫖', time: '14:25' },
+    { name: 'Hvězdička', text: 'Jóga! Vážně, zkus pozici dítěte. Je to zázrak.', time: '14:28' },
+    { name: 'Motýlek', text: 'Hořčík! Beru ho celý měsíc a křeče jsou mnohem slabší', time: '14:31' },
+    { name: 'Květinka', text: 'Díky moc! Zkusím ten hořčík, to jsem ještě nezkoušela ❤️', time: '14:33' },
+  ],
+  1: [ // Snažíme se o miminko
+    { name: 'Berušinka', text: 'Snažíme se 4. měsíc, začínám být nervózní... 😔', time: '10:15' },
+    { name: 'Sluníčko', text: 'Drž se! My to zkoušeli 8 měsíců. Klid a trpělivost 🤗', time: '10:18' },
+    { name: 'Hvězdička', text: 'Sleduj ovulaci! Mně pomohly ovulační testy + teplota', time: '10:22' },
+    { name: 'Duha', text: 'Doporučuju aplikaci na tracking plodných dnů, pomohlo mi to ❤️', time: '10:25' },
+    { name: 'Berušinka', text: 'Děkuju holky, jste skvělé! Zkusím být trpělivější 💪', time: '10:30' },
+  ],
+  2: [ // Nepravidelný cyklus
+    { name: 'Motýlek', text: 'Můj cyklus je 24-38 dní, nikdy nevím kdy přijde 😩', time: '18:40' },
+    { name: 'Duha', text: 'Byla jsi u gynekologa? Nepravidelnost může mít více příčin', time: '18:43' },
+    { name: 'Květinka', text: 'Mně pomohl pravidelný spánek a snížení stresu', time: '18:46' },
+    { name: 'Sluníčko', text: 'PCOS? To může způsobovat nepravidelné cykly. Stojí za vyšetření!', time: '18:50' },
+    { name: 'Motýlek', text: 'K doktorce půjdu příští týden. Díky za podporu 🙏', time: '18:55' },
+  ]
+};
+
+let state = {
+  currentMonth: new Date().getMonth(),
+  currentYear: new Date().getFullYear(),
+  selectedDate: null,
+  currentTab: 'Calendar',
+  currentTopic: 0,
+};
+
+let settings = {
+  darkMode: false,
+  cycleLength: 28,
+  periodLength: 5,
+  lutealPhase: 14,
+  conceptionMode: false,
+  contraceptionType: 'none',
+  pillTime: '08:00',
+  iudExpiry: '',
+  shareCode: '',
+  partnerEmail: '',
+  privacy: {
+    fertileDays: true,
+    period: true,
+    moods: false,
+    symptoms: false,
+    predictions: true,
+  }
+};
+
+let dayData = {}; // key: "YYYY-MM-DD", value: { period, flow, symptoms[], temp, notes, intercourse }
+let notifications = [];
+
+// ========== INIT ==========
+function init() {
+  loadData();
+  ensureDemoData();
+  generateNotifications();
+  renderCalendar();
+  renderSymptoms();
+  updateStats();
+  updatePartnerTab();
+  applyDarkMode();
+  applyContraceptionUI();
+
+  // Check unread notifications
+  const unread = notifications.filter(n => !n.read).length;
+  document.getElementById('notifBadge').classList.toggle('show', unread > 0);
+
+  // Swipe support for calendar
+  let touchStartX = 0;
+  const calDays = document.getElementById('calDays');
+  calDays.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
+  calDays.addEventListener('touchend', e => {
+    const diff = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(diff) > 60) { changeMonth(diff > 0 ? -1 : 1); }
+  }, { passive: true });
+}
+
+// ========== PERSISTENCE ==========
+function loadData() {
+  try {
+    const s = localStorage.getItem('mujcyklus_settings');
+    if (s) settings = { ...settings, ...JSON.parse(s) };
+    const d = localStorage.getItem('mujcyklus_daydata');
+    if (d) dayData = JSON.parse(d);
+    const n = localStorage.getItem('mujcyklus_notifs');
+    if (n) notifications = JSON.parse(n);
+  } catch(e) {}
+}
+
+function saveData() {
+  localStorage.setItem('mujcyklus_settings', JSON.stringify(settings));
+  localStorage.setItem('mujcyklus_daydata', JSON.stringify(dayData));
+  localStorage.setItem('mujcyklus_notifs', JSON.stringify(notifications));
+  // Also save partner-accessible data
+  savePartnerData();
+}
+
+function saveSettings() {
+  settings.contraceptionType = document.getElementById('contraceptionType').value;
+  settings.pillTime = document.getElementById('pillTime').value;
+  settings.iudExpiry = document.getElementById('iudExpiry').value;
+  settings.partnerEmail = document.getElementById('partnerEmail').value;
+  applyContraceptionUI();
+  saveData();
+}
+
+function savePartnerData() {
+  const pd = {
+    settings: {
+      privacy: settings.privacy,
+      conceptionMode: settings.conceptionMode,
+      cycleLength: settings.cycleLength,
+      periodLength: settings.periodLength,
+    },
+    predictions: getPredictions(),
+    currentPhase: getCurrentPhase(),
+    cycleDay: getCurrentCycleDay(),
+    dayData: {}
+  };
+  // Include only allowed data
+  if (settings.privacy.period || settings.privacy.fertileDays || settings.privacy.moods || settings.privacy.symptoms) {
+    Object.keys(dayData).forEach(k => {
+      const d = dayData[k];
+      const entry = {};
+      if (settings.privacy.period) { entry.period = d.period; entry.flow = d.flow; }
+      if (settings.privacy.moods) {
+        entry.symptoms = (d.symptoms || []).filter(s => ['good_mood','bad_mood','irritable','crying'].includes(s));
+      }
+      if (settings.privacy.symptoms) {
+        entry.symptoms = d.symptoms;
+      }
+      if (Object.keys(entry).length) pd.dayData[k] = entry;
+    });
+  }
+  localStorage.setItem('mujcyklus_partner', JSON.stringify(pd));
+}
+
+// ========== DEMO DATA ==========
+function ensureDemoData() {
+  if (Object.keys(dayData).length > 10) return; // Already has data
+
+  // 6 months of cycle history: Oct 2025 - Mar 2026
+  const cycles = [
+    { start: '2025-10-03', len: 5 },
+    { start: '2025-10-31', len: 5 },
+    { start: '2025-11-28', len: 4 },
+    { start: '2025-12-27', len: 5 },
+    { start: '2026-01-25', len: 5 },
+    { start: '2026-02-22', len: 4 },
+    { start: '2026-03-22', len: 3 }, // current
+  ];
+
+  const moodOptions = [
+    ['good_mood','libido'],
+    ['bad_mood','fatigue','cramps'],
+    ['irritable','headache','cravings'],
+    ['good_mood'],
+    ['fatigue','breast_tenderness'],
+    ['crying','bad_mood','insomnia'],
+    ['good_mood','libido'],
+  ];
+
+  cycles.forEach((cycle, ci) => {
+    const start = new Date(cycle.start);
+    // Period days
+    for (let d = 0; d < cycle.len; d++) {
+      const dt = new Date(start);
+      dt.setDate(dt.getDate() + d);
+      const key = fmtDate(dt);
+      dayData[key] = {
+        period: true,
+        flow: d === 0 ? 'light' : d < cycle.len - 1 ? (d === 1 || d === 2 ? 'heavy' : 'medium') : 'light',
+        symptoms: d === 1 ? ['cramps','fatigue','bad_mood'] : d === 0 ? ['fatigue'] : [],
+        temp: (36.2 + Math.random() * 0.3).toFixed(1),
+        notes: '',
+        intercourse: false,
+      };
+    }
+    // Some random symptom days in the cycle
+    const symptomDays = [7, 10, 14, 15, 20, 24, 25, 26];
+    symptomDays.forEach(sd => {
+      const dt = new Date(start);
+      dt.setDate(dt.getDate() + sd);
+      const key = fmtDate(dt);
+      if (!dayData[key]) {
+        const moods = moodOptions[sd % moodOptions.length];
+        dayData[key] = {
+          period: false,
+          flow: null,
+          symptoms: moods,
+          temp: sd >= 15 ? (36.5 + Math.random() * 0.4).toFixed(1) : (36.1 + Math.random() * 0.3).toFixed(1),
+          notes: sd === 14 ? 'Ovulační bolest, cítím napětí v podbřišku' : '',
+          intercourse: sd === 13 || sd === 14 || sd === 15 ? true : false,
+        };
+      }
+    });
+  });
+
+  // Settings already have good defaults
+  if (!settings.shareCode) {
+    settings.shareCode = generateCode();
+  }
+
+  saveData();
+}
+
+function generateCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
+// ========== CALENDAR ==========
+function fmtDate(d) {
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+function parseDate(s) {
+  const [y,m,d] = s.split('-').map(Number);
+  return new Date(y, m-1, d);
+}
+
+function changeMonth(dir) {
+  state.currentMonth += dir;
+  if (state.currentMonth > 11) { state.currentMonth = 0; state.currentYear++; }
+  if (state.currentMonth < 0) { state.currentMonth = 11; state.currentYear--; }
+  renderCalendar();
+}
+
+function renderCalendar() {
+  const title = document.getElementById('calTitle');
+  title.textContent = MONTHS_CZ[state.currentMonth] + ' ' + state.currentYear;
+
+  const container = document.getElementById('calDays');
+  container.innerHTML = '';
+
+  const firstDay = new Date(state.currentYear, state.currentMonth, 1);
+  let startDay = firstDay.getDay() - 1;
+  if (startDay < 0) startDay = 6;
+
+  const daysInMonth = new Date(state.currentYear, state.currentMonth + 1, 0).getDate();
+  const today = new Date();
+  const todayStr = fmtDate(today);
+
+  // Get predictions for coloring
+  const predictions = getPredictions();
+
+  // Empty cells for days before month starts
+  for (let i = 0; i < startDay; i++) {
+    const el = document.createElement('button');
+    el.className = 'cal-day empty';
+    container.appendChild(el);
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(state.currentYear, state.currentMonth, d);
+    const dateStr = fmtDate(date);
+    const el = document.createElement('button');
+    el.className = 'cal-day';
+
+    // Today
+    if (dateStr === todayStr) el.classList.add('today');
+
+    // Selected
+    if (dateStr === state.selectedDate) el.classList.add('selected');
+
+    // Color coding
+    const dd = dayData[dateStr];
+    if (dd && dd.period) {
+      el.classList.add('period-day');
+    } else if (predictions) {
+      const dateMs = date.getTime();
+      if (predictions.ovulationDate && fmtDate(new Date(predictions.ovulationDate)) === dateStr) {
+        el.classList.add('ovulation-day');
+      } else if (predictions.fertileStart && predictions.fertileEnd) {
+        const fs = new Date(predictions.fertileStart).getTime();
+        const fe = new Date(predictions.fertileEnd).getTime();
+        if (dateMs >= fs && dateMs <= fe) el.classList.add('fertile-day');
+      }
+      if (predictions.pmsStart && predictions.pmsEnd) {
+        const ps = new Date(predictions.pmsStart).getTime();
+        const pe = new Date(predictions.pmsEnd).getTime();
+        if (dateMs >= ps && dateMs <= pe && !el.classList.contains('fertile-day') && !el.classList.contains('ovulation-day')) {
+          el.classList.add('pms-day');
+        }
+      }
+    }
+
+    // Emoji dot
+    let emojiDot = '';
+    if (dd && dd.symptoms && dd.symptoms.length > 0) {
+      const sym = SYMPTOMS.find(s => s.id === dd.symptoms[0]);
+      if (sym) emojiDot = sym.emoji;
+    }
+
+    el.innerHTML = `${d}${emojiDot ? '<span class="emoji-dot">' + emojiDot + '</span>' : ''}`;
+    el.onclick = () => openDayPanel(dateStr);
+    container.appendChild(el);
+  }
+}
+
+// ========== PREDICTIONS ENGINE ==========
+function getCycleStarts() {
+  // Find all period start dates (first day of each period block)
+  const periodDates = Object.keys(dayData).filter(k => dayData[k].period).sort();
+  if (periodDates.length === 0) return [];
+
+  const starts = [periodDates[0]];
+  for (let i = 1; i < periodDates.length; i++) {
+    const prev = parseDate(periodDates[i-1]);
+    const curr = parseDate(periodDates[i]);
+    const diff = (curr - prev) / (1000*60*60*24);
+    if (diff > 3) starts.push(periodDates[i]); // new cycle if gap > 3 days
+  }
+  return starts;
+}
+
+function getCycleLengths() {
+  const starts = getCycleStarts();
+  const lengths = [];
+  for (let i = 1; i < starts.length; i++) {
+    const len = Math.round((parseDate(starts[i]) - parseDate(starts[i-1])) / (1000*60*60*24));
+    if (len >= 18 && len <= 45) lengths.push(len); // sanity filter
+  }
+  return lengths;
+}
+
+function getWeightedAverage(values) {
+  if (values.length === 0) return settings.cycleLength;
+  if (values.length === 1) return values[0];
+  // More recent cycles get higher weight
+  let weightSum = 0, valSum = 0;
+  values.forEach((v, i) => {
+    const weight = i + 1; // later = higher weight
+    weightSum += weight;
+    valSum += v * weight;
+  });
+  return valSum / weightSum;
+}
+
+function getConfidence() {
+  const lengths = getCycleLengths();
+  if (lengths.length < 2) return 60;
+  if (lengths.length < 4) return 70;
+  // Based on regularity
+  const avg = getWeightedAverage(lengths);
+  const variance = lengths.reduce((sum, l) => sum + Math.pow(l - avg, 2), 0) / lengths.length;
+  const stdDev = Math.sqrt(variance);
+  // Lower std dev = higher confidence
+  const conf = Math.max(50, Math.min(95, Math.round(95 - stdDev * 8)));
+  return conf;
+}
+
+function detectTrend(lengths) {
+  if (lengths.length < 3) return 0;
+  const recent = lengths.slice(-3);
+  const diffs = [];
+  for (let i = 1; i < recent.length; i++) diffs.push(recent[i] - recent[i-1]);
+  const avgDiff = diffs.reduce((a,b) => a+b, 0) / diffs.length;
+  return avgDiff; // positive = lengthening, negative = shortening
+}
+
+function getPredictions() {
+  const starts = getCycleStarts();
+  const lengths = getCycleLengths();
+
+  if (starts.length === 0) return null;
+
+  const lastStart = parseDate(starts[starts.length - 1]);
+  const avgCycle = Math.round(getWeightedAverage(lengths.length > 0 ? lengths : [settings.cycleLength]));
+  const trend = detectTrend(lengths);
+  const adjustedCycle = Math.round(avgCycle + trend * 0.3);
+  const effectiveCycle = Math.max(21, Math.min(40, adjustedCycle));
+
+  const luteal = settings.lutealPhase;
+  const ovulationDay = effectiveCycle - luteal;
+
+  const nextPeriod = new Date(lastStart);
+  nextPeriod.setDate(nextPeriod.getDate() + effectiveCycle);
+
+  const ovulationDate = new Date(lastStart);
+  ovulationDate.setDate(ovulationDate.getDate() + ovulationDay);
+
+  const fertileStart = new Date(ovulationDate);
+  fertileStart.setDate(fertileStart.getDate() - 5);
+  const fertileEnd = new Date(ovulationDate);
+  fertileEnd.setDate(fertileEnd.getDate() + 1);
+
+  const pmsStart = new Date(nextPeriod);
+  pmsStart.setDate(pmsStart.getDate() - 5);
+  const pmsEnd = new Date(nextPeriod);
+  pmsEnd.setDate(pmsEnd.getDate() - 1);
+
+  // Average period length
+  const periodLengths = [];
+  for (let i = 0; i < starts.length; i++) {
+    let len = 0;
+    let d = parseDate(starts[i]);
+    while (dayData[fmtDate(d)] && dayData[fmtDate(d)].period) {
+      len++;
+      d.setDate(d.getDate() + 1);
+      if (len > 10) break;
+    }
+    if (len > 0) periodLengths.push(len);
+  }
+
+  return {
+    nextPeriod: fmtDate(nextPeriod),
+    ovulationDate: fmtDate(ovulationDate),
+    fertileStart: fmtDate(fertileStart),
+    fertileEnd: fmtDate(fertileEnd),
+    pmsStart: fmtDate(pmsStart),
+    pmsEnd: fmtDate(pmsEnd),
+    avgCycle: effectiveCycle,
+    avgPeriod: periodLengths.length > 0 ? Math.round(periodLengths.reduce((a,b)=>a+b,0)/periodLengths.length) : settings.periodLength,
+    confidence: getConfidence(),
+    trend: trend,
+  };
+}
+
+function getCurrentCycleDay() {
+  const starts = getCycleStarts();
+  if (starts.length === 0) return null;
+  const lastStart = parseDate(starts[starts.length - 1]);
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  return Math.floor((today - lastStart) / (1000*60*60*24)) + 1;
+}
+
+function getCurrentPhase() {
+  const cycleDay = getCurrentCycleDay();
+  const pred = getPredictions();
+  if (!cycleDay || !pred) return { name: 'Neznámá', color: 'var(--gray)', bg: 'var(--gray-light)' };
+
+  const periodLen = pred.avgPeriod || settings.periodLength;
+  const ovDay = pred.avgCycle - settings.lutealPhase;
+
+  if (cycleDay <= periodLen) return { name: 'Menstruace', color: 'var(--period)', bg: 'var(--period-light)', emoji: '🔴' };
+  if (cycleDay >= ovDay - 5 && cycleDay <= ovDay + 1) {
+    if (cycleDay === ovDay) return { name: 'Ovulace', color: 'white', bg: 'var(--ovulation)', emoji: '🟢' };
+    return { name: 'Plodné dny', color: 'var(--fertile)', bg: 'var(--fertile-light)', emoji: '🟢' };
+  }
+  if (cycleDay > ovDay + 1 && cycleDay <= ovDay + 1 + 5) return { name: 'Luteální fáze', color: 'var(--pink)', bg: 'var(--pink-light)', emoji: '🌸' };
+  if (cycleDay > pred.avgCycle - 5) return { name: 'PMS', color: 'var(--pms)', bg: 'var(--pms-light)', emoji: '🧡' };
+  return { name: 'Folikulární fáze', color: 'var(--pink)', bg: 'var(--pink-light)', emoji: '🌸' };
+}
+
+// ========== DAY PANEL ==========
+function openDayPanel(dateStr) {
+  state.selectedDate = dateStr;
+  const d = parseDate(dateStr);
+  const dayNames = ['Neděle','Pondělí','Úterý','Středa','Čtvrtek','Pátek','Sobota'];
+  document.getElementById('dayPanelTitle').textContent = `${dayNames[d.getDay()]} ${d.getDate()}. ${d.getMonth()+1}. ${d.getFullYear()}`;
+
+  const dd = dayData[dateStr] || { period: false, flow: null, symptoms: [], temp: '', notes: '', intercourse: false };
+
+  // Period toggle
+  const pt = document.getElementById('periodToggle');
+  pt.classList.toggle('active', dd.period);
+  document.getElementById('periodToggleLabel').textContent = dd.period ? 'Zapnuto ✓' : 'Zapnout';
+  document.getElementById('flowSection').style.display = dd.period ? 'block' : 'none';
+
+  // Flow
+  document.querySelectorAll('.flow-btn').forEach(btn => {
+    btn.classList.toggle('active', dd.flow === btn.getAttribute('onclick').match(/'(\w+)'/)[1]);
+  });
+
+  // Symptoms
+  document.querySelectorAll('.symptom-btn').forEach(btn => {
+    btn.classList.toggle('active', (dd.symptoms || []).includes(btn.dataset.id));
+  });
+
+  // Temp
+  document.getElementById('tempInput').value = dd.temp || '';
+
+  // Notes
+  document.getElementById('notesArea').value = dd.notes || '';
+
+  // Intercourse (conception mode)
+  const ics = document.getElementById('intercourseSection');
+  ics.style.display = settings.conceptionMode ? 'block' : 'none';
+  const it = document.getElementById('intercourseToggle');
+  it.classList.toggle('active', dd.intercourse);
+  document.getElementById('intercourseLabel').textContent = dd.intercourse ? 'Ano ❤️' : 'Ne';
+
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('dayPanel').classList.add('open');
+  renderCalendar();
+}
+
+function closeDayPanel() {
+  state.selectedDate = null;
+  document.getElementById('overlay').classList.remove('show');
+  document.getElementById('dayPanel').classList.remove('open');
+  renderCalendar();
+}
+
+function togglePeriod() {
+  if (!state.selectedDate) return;
+  const dd = dayData[state.selectedDate] || { period: false, flow: null, symptoms: [], temp: '', notes: '', intercourse: false };
+  dd.period = !dd.period;
+  if (!dd.period) dd.flow = null;
+  dayData[state.selectedDate] = dd;
+
+  const pt = document.getElementById('periodToggle');
+  pt.classList.toggle('active', dd.period);
+  document.getElementById('periodToggleLabel').textContent = dd.period ? 'Zapnuto ✓' : 'Zapnout';
+  document.getElementById('flowSection').style.display = dd.period ? 'block' : 'none';
+}
+
+function setFlow(level) {
+  if (!state.selectedDate) return;
+  const dd = dayData[state.selectedDate] || { period: false, flow: null, symptoms: [], temp: '', notes: '', intercourse: false };
+  dd.flow = level;
+  dayData[state.selectedDate] = dd;
+  document.querySelectorAll('.flow-btn').forEach(btn => {
+    btn.classList.toggle('active', level === btn.getAttribute('onclick').match(/'(\w+)'/)[1]);
+  });
+}
+
+function toggleIntercourse() {
+  if (!state.selectedDate) return;
+  const dd = dayData[state.selectedDate] || { period: false, flow: null, symptoms: [], temp: '', notes: '', intercourse: false };
+  dd.intercourse = !dd.intercourse;
+  dayData[state.selectedDate] = dd;
+  const it = document.getElementById('intercourseToggle');
+  it.classList.toggle('active', dd.intercourse);
+  document.getElementById('intercourseLabel').textContent = dd.intercourse ? 'Ano ❤️' : 'Ne';
+}
+
+function renderSymptoms() {
+  const grid = document.getElementById('symptomsGrid');
+  grid.innerHTML = '';
+  SYMPTOMS.forEach(s => {
+    const btn = document.createElement('button');
+    btn.className = 'symptom-btn';
+    btn.dataset.id = s.id;
+    btn.innerHTML = `<span class="sym-emoji">${s.emoji}</span>${s.label}`;
+    btn.onclick = () => {
+      btn.classList.toggle('active');
+    };
+    grid.appendChild(btn);
+  });
+}
+
+function saveDayData() {
+  if (!state.selectedDate) return;
+  const activeSymptoms = [...document.querySelectorAll('.symptom-btn.active')].map(b => b.dataset.id);
+  const dd = dayData[state.selectedDate] || { period: false, flow: null, symptoms: [], temp: '', notes: '', intercourse: false };
+  dd.symptoms = activeSymptoms;
+  dd.temp = document.getElementById('tempInput').value;
+  dd.notes = document.getElementById('notesArea').value;
+  dayData[state.selectedDate] = dd;
+
+  saveData();
+  closeDayPanel();
+  updateStats();
+  // Visual feedback
+  const btn = document.querySelector('.save-btn');
+  btn.textContent = '✓ Uloženo!';
+  setTimeout(() => { btn.textContent = '💾 Uložit'; }, 1500);
+}
+
+// ========== TABS ==========
+function switchTab(tab) {
+  state.currentTab = tab;
+  document.querySelectorAll('.tab-view').forEach(v => v.classList.remove('active'));
+  document.getElementById('tab' + tab).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach((n, i) => {
+    n.classList.toggle('active', ['Calendar','Stats','Community','Profile','Partner'][i] === tab);
+  });
+
+  if (tab === 'Stats') updateStats();
+  if (tab === 'Community') renderCommunity();
+  if (tab === 'Partner') updatePartnerTab();
+  if (tab === 'Profile') syncProfileUI();
+  if (tab === 'Calendar') renderCalendar();
+}
+
+// ========== STATS ==========
+function updateStats() {
+  const cycleDay = getCurrentCycleDay();
+  const phase = getCurrentPhase();
+  const pred = getPredictions();
+
+  // Progress ring
+  const dayEl = document.getElementById('cycleDayNum');
+  dayEl.textContent = cycleDay || '-';
+  const circle = document.getElementById('progressCircle');
+  const total = pred ? pred.avgCycle : settings.cycleLength;
+  const progress = cycleDay ? Math.min(cycleDay / total, 1) : 0;
+  circle.style.strokeDashoffset = 440 - (440 * progress);
+  circle.style.stroke = phase.color === 'white' ? 'var(--ovulation)' : phase.color;
+
+  // Phase badge
+  const badge = document.getElementById('phaseBadge');
+  badge.textContent = (phase.emoji || '') + ' ' + phase.name;
+  badge.style.background = phase.bg;
+  badge.style.color = phase.color === 'white' ? 'white' : phase.color;
+
+  if (pred) {
+    const nextP = parseDate(pred.nextPeriod);
+    const today = new Date(); today.setHours(0,0,0,0);
+    const daysUntil = Math.ceil((nextP - today) / (1000*60*60*24));
+    document.getElementById('nextPeriodStat').textContent = daysUntil > 0 ? `za ${daysUntil} dní` : daysUntil === 0 ? 'Dnes!' : 'Probíhá';
+    document.getElementById('confidenceStat').innerHTML = `<span class="confidence">${pred.confidence}%</span>`;
+    document.getElementById('fertileWindowStat').textContent = formatDateRange(pred.fertileStart, pred.fertileEnd);
+    document.getElementById('avgCycleStat').textContent = pred.avgCycle + ' dní';
+    document.getElementById('avgPeriodStat').textContent = pred.avgPeriod + ' dní';
+
+    // Regularity
+    const lengths = getCycleLengths();
+    let regularity = 0;
+    if (lengths.length >= 2) {
+      const avg = lengths.reduce((a,b)=>a+b,0)/lengths.length;
+      const maxDev = Math.max(...lengths.map(l => Math.abs(l - avg)));
+      regularity = Math.max(0, Math.round(100 - maxDev * 10));
+    }
+    document.getElementById('regularityStat').textContent = regularity + '%';
+    document.getElementById('regularityFill').style.width = regularity + '%';
+
+    // Conception stats
+    const cs = document.getElementById('conceptionStatsCard');
+    cs.style.display = settings.conceptionMode ? 'block' : 'none';
+    if (settings.conceptionMode) {
+      const ovDate = parseDate(pred.ovulationDate);
+      const daysToOv = Math.ceil((ovDate - today) / (1000*60*60*24));
+      document.getElementById('mostFertileStat').textContent = daysToOv > 0 ? `za ${daysToOv} dní` : daysToOv === 0 ? 'DNES!' : 'Proběhla';
+
+      const testDate = new Date(ovDate);
+      testDate.setDate(testDate.getDate() + 14);
+      const daysToTest = Math.ceil((testDate - today) / (1000*60*60*24));
+      document.getElementById('pregTestStat').textContent = daysToTest > 0 ? `za ${daysToTest} dní` : 'Můžeš testovat!';
+    }
+  }
+
+  // Health alerts
+  renderHealthAlerts();
+
+  // Cycle history
+  renderCycleHistory();
+
+  // Mood graph
+  renderMoodGraph();
+
+  // Widget
+  updateWidget();
+}
+
+function formatDateRange(start, end) {
+  const s = parseDate(start);
+  const e = parseDate(end);
+  return `${s.getDate()}.${s.getMonth()+1}. – ${e.getDate()}.${e.getMonth()+1}.`;
+}
+
+function renderHealthAlerts() {
+  const container = document.getElementById('healthAlerts');
+  container.innerHTML = '';
+  const lengths = getCycleLengths();
+  const alerts = [];
+
+  if (lengths.length >= 2) {
+    const last = lengths[lengths.length - 1];
+    if (last < 21) alerts.push({ title: '⚠️ Krátký cyklus', text: `Váš poslední cyklus byl jen ${last} dní. Cykly kratší než 21 dní mohou vyžadovat lékařskou konzultaci.` });
+    if (last > 35) alerts.push({ title: '⚠️ Dlouhý cyklus', text: `Váš poslední cyklus trval ${last} dní. Cykly delší než 35 dní mohou značit hormonální nerovnováhu.` });
+
+    // Check irregularity over 3+ cycles
+    if (lengths.length >= 3) {
+      const recent3 = lengths.slice(-3);
+      const maxDiff = Math.max(...recent3) - Math.min(...recent3);
+      if (maxDiff > 7) alerts.push({ title: '⚠️ Nepravidelný cyklus', text: `Váš cyklus je nepravidelný už ${lengths.length >= 3 ? '3' : '2'} měsíce. Rozdíl mezi cykly je ${maxDiff} dní. Doporučujeme navštívit lékaře.` });
+    }
+  }
+
+  // Check long periods
+  const starts = getCycleStarts();
+  if (starts.length > 0) {
+    const lastStart = parseDate(starts[starts.length - 1]);
+    let pLen = 0;
+    let d = new Date(lastStart);
+    while (dayData[fmtDate(d)] && dayData[fmtDate(d)].period) { pLen++; d.setDate(d.getDate()+1); if(pLen>15) break; }
+    if (pLen > 7) alerts.push({ title: '⚠️ Dlouhá menstruace', text: `Vaše menstruace trvá ${pLen} dní, což je delší než obvykle. Pokud to přetrvává, navštivte lékaře.` });
+  }
+
+  // Contraception alerts
+  if (settings.contraceptionType === 'iud' && settings.iudExpiry) {
+    const exp = parseDate(settings.iudExpiry);
+    const today = new Date();
+    const daysToExp = Math.ceil((exp - today) / (1000*60*60*24));
+    if (daysToExp <= 30 && daysToExp > 0) alerts.push({ title: '⚠️ Expirace tělíska', text: `Vaše IUD vyprší za ${daysToExp} dní. Objednejte se k lékaři na výměnu.` });
+    if (daysToExp <= 0) alerts.push({ title: '🔴 Tělísko expirováno', text: 'Vaše IUD je po expiraci! Navštivte lékaře co nejdříve.' });
+  }
+
+  if (alerts.length === 0) return;
+
+  alerts.forEach(a => {
+    const card = document.createElement('div');
+    card.className = 'alert-card';
+    card.innerHTML = `<div class="alert-title">${a.title}</div><div class="alert-text">${a.text}</div>`;
+    container.appendChild(card);
+  });
+}
+
+function renderCycleHistory() {
+  const container = document.getElementById('cycleHistory');
+  const starts = getCycleStarts();
+  const lengths = getCycleLengths();
+  container.innerHTML = '';
+
+  const showCount = Math.min(starts.length, 12);
+  for (let i = starts.length - 1; i >= Math.max(0, starts.length - showCount); i--) {
+    const d = parseDate(starts[i]);
+    const len = i < lengths.length ? lengths[i] : '-';
+    // Period length
+    let pLen = 0;
+    let dt = new Date(d);
+    while (dayData[fmtDate(dt)] && dayData[fmtDate(dt)].period) { pLen++; dt.setDate(dt.getDate()+1); if(pLen>15)break; }
+
+    const item = document.createElement('div');
+    item.className = 'cycle-history-item';
+    item.innerHTML = `
+      <span style="color:var(--dark)">${d.getDate()}.${d.getMonth()+1}.${d.getFullYear()}</span>
+      <span style="color:var(--period)">🔴 ${pLen}d</span>
+      <span style="color:var(--gray)">${len !== '-' ? len + ' dní' : 'Aktuální'}</span>
+    `;
+    container.appendChild(item);
+  }
+}
+
+function renderMoodGraph() {
+  const canvas = document.getElementById('moodCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width * 2;
+  canvas.height = 120 * 2;
+  canvas.style.width = rect.width + 'px';
+  canvas.style.height = '120px';
+  ctx.scale(2, 2);
+
+  const w = rect.width;
+  const h = 120;
+
+  // Aggregate mood data across cycles by cycle day
+  const moodByDay = {};
+  const starts = getCycleStarts();
+  const avgCycle = getPredictions()?.avgCycle || settings.cycleLength;
+
+  starts.forEach(start => {
+    const startDate = parseDate(start);
+    for (let d = 0; d < avgCycle; d++) {
+      const dt = new Date(startDate);
+      dt.setDate(dt.getDate() + d);
+      const dd = dayData[fmtDate(dt)];
+      if (dd && dd.symptoms) {
+        if (!moodByDay[d]) moodByDay[d] = { good: 0, bad: 0, count: 0 };
+        moodByDay[d].count++;
+        if (dd.symptoms.includes('good_mood') || dd.symptoms.includes('libido')) moodByDay[d].good++;
+        if (dd.symptoms.includes('bad_mood') || dd.symptoms.includes('irritable') || dd.symptoms.includes('crying')) moodByDay[d].bad++;
+      }
+    }
+  });
+
+  ctx.clearRect(0, 0, w, h);
+
+  // Draw mood line
+  const padding = 10;
+  const graphW = w - padding * 2;
+  const graphH = h - padding * 2;
+  const midY = padding + graphH / 2;
+
+  // Background zones
+  ctx.fillStyle = 'rgba(129,199,132,0.1)';
+  ctx.fillRect(padding, padding, graphW, graphH / 2);
+  ctx.fillStyle = 'rgba(229,115,115,0.1)';
+  ctx.fillRect(padding, midY, graphW, graphH / 2);
+
+  // Mid line
+  ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  ctx.moveTo(padding, midY);
+  ctx.lineTo(w - padding, midY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Labels
+  ctx.font = '10px Nunito';
+  ctx.fillStyle = '#81C784';
+  ctx.textAlign = 'right';
+  ctx.fillText('😊', padding - 2, padding + 14);
+  ctx.fillStyle = '#E57373';
+  ctx.fillText('😔', padding - 2, h - padding);
+
+  // Plot points
+  const points = [];
+  for (let d = 0; d < avgCycle; d++) {
+    const x = padding + (d / (avgCycle - 1)) * graphW;
+    const md = moodByDay[d];
+    if (md && md.count > 0) {
+      const score = (md.good - md.bad) / md.count; // -1 to 1
+      const y = midY - score * (graphH / 2 - 5);
+      points.push({ x, y, score });
+    }
+  }
+
+  if (points.length > 1) {
+    ctx.beginPath();
+    ctx.strokeStyle = '#F48FB1';
+    ctx.lineWidth = 2;
+    ctx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) {
+      const cpx = (points[i-1].x + points[i].x) / 2;
+      ctx.quadraticCurveTo(cpx, points[i-1].y, (cpx + points[i].x) / 2, (points[i-1].y + points[i].y) / 2);
+    }
+    ctx.lineTo(points[points.length-1].x, points[points.length-1].y);
+    ctx.stroke();
+
+    // Dots
+    points.forEach(p => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+      ctx.fillStyle = p.score >= 0 ? '#81C784' : '#E57373';
+      ctx.fill();
+    });
+  }
+}
+
+function updateWidget() {
+  const cycleDay = getCurrentCycleDay();
+  const phase = getCurrentPhase();
+  const wt = document.getElementById('widgetText');
+  if (cycleDay) {
+    wt.textContent = `Den ${cycleDay} | ${phase.name} ${phase.emoji || ''}`;
+  }
+
+  const total = getPredictions()?.avgCycle || settings.cycleLength;
+  const progress = cycleDay ? Math.min(cycleDay / total, 1) : 0;
+  const circle = document.getElementById('widgetCircle');
+  circle.style.strokeDashoffset = 126 - (126 * progress);
+}
+
+// ========== COMMUNITY ==========
+function switchTopic(idx) {
+  state.currentTopic = idx;
+  document.querySelectorAll('.topic-tab').forEach((t, i) => t.classList.toggle('active', i === idx));
+  renderCommunity();
+}
+
+function renderCommunity() {
+  const container = document.getElementById('chatMessages');
+  const msgs = MOCK_COMMUNITY[state.currentTopic] || [];
+  container.innerHTML = '';
+  msgs.forEach((m, i) => {
+    const isLast = i === msgs.length - 1;
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-bubble ' + (i === 3 ? 'self' : 'other');
+    bubble.innerHTML = `<div class="chat-name">${m.name} · ${m.time}</div>${m.text}`;
+    container.appendChild(bubble);
+  });
+}
+
+function sendChat() {
+  const input = document.getElementById('chatInput');
+  if (!input.value.trim()) return;
+  const container = document.getElementById('chatMessages');
+  const bubble = document.createElement('div');
+  bubble.className = 'chat-bubble self';
+  const now = new Date();
+  bubble.innerHTML = `<div class="chat-name">Ty · ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}</div>${input.value}`;
+  container.appendChild(bubble);
+  input.value = '';
+  bubble.scrollIntoView({ behavior: 'smooth' });
+}
+
+// ========== NOTIFICATIONS ==========
+function generateNotifications() {
+  const pred = getPredictions();
+  const phase = getCurrentPhase();
+  const cycleDay = getCurrentCycleDay();
+  const now = new Date();
+
+  const newNotifs = [];
+
+  if (pred) {
+    const nextP = parseDate(pred.nextPeriod);
+    const daysUntil = Math.ceil((nextP - now) / (1000*60*60*24));
+
+    if (daysUntil === 1) newNotifs.push({ icon: '🔴', bg: 'var(--period-light)', text: 'Zítra pravděpodobně začne menstruace', time: now.toISOString() });
+    if (daysUntil === 0) newNotifs.push({ icon: '🔴', bg: 'var(--period-light)', text: 'Dnes by měla začít menstruace', time: now.toISOString() });
+
+    const fs = parseDate(pred.fertileStart);
+    const daysToFertile = Math.ceil((fs - now) / (1000*60*60*24));
+    if (daysToFertile === 2) newNotifs.push({ icon: '🟢', bg: 'var(--fertile-light)', text: 'Plodné okno začíná za 2 dny', time: now.toISOString() });
+
+    if (phase.name === 'Ovulace') newNotifs.push({ icon: '🟢', bg: 'var(--fertile-light)', text: `Tvůj cyklus je dnes Den ${cycleDay} – ovulace!`, time: now.toISOString() });
+
+    const ps = parseDate(pred.pmsStart);
+    const daysToPms = Math.ceil((ps - now) / (1000*60*60*24));
+    if (daysToPms === 1) newNotifs.push({ icon: '🧡', bg: 'var(--pms-light)', text: 'PMS začíná zítra, buď na sebe hodná', time: now.toISOString() });
+  }
+
+  if (settings.contraceptionType === 'pill') {
+    newNotifs.push({ icon: '💊', bg: 'var(--lavender-light)', text: `Nezapomeň vzít antikoncepci (${settings.pillTime})`, time: now.toISOString() });
+  }
+
+  // Add demo history if empty
+  if (notifications.length === 0) {
+    const demoNotifs = [
+      { icon: '🔴', bg: 'var(--period-light)', text: 'Menstruace začala včera – zaznamenáno', time: new Date(2026, 2, 22, 8, 0).toISOString(), read: true },
+      { icon: '🟢', bg: 'var(--fertile-light)', text: 'Plodné okno začíná za 2 dny', time: new Date(2026, 2, 7, 9, 0).toISOString(), read: true },
+      { icon: '🧡', bg: 'var(--pms-light)', text: 'PMS začíná zítra, buď na sebe hodná', time: new Date(2026, 2, 16, 10, 0).toISOString(), read: true },
+      { icon: '💊', bg: 'var(--lavender-light)', text: 'Nezapomeň vzít antikoncepci', time: new Date(2026, 2, 20, 8, 0).toISOString(), read: true },
+      { icon: '🟢', bg: 'var(--fertile-light)', text: 'Tvůj cyklus je dnes Den 14 – ovulace!', time: new Date(2026, 2, 9, 12, 0).toISOString(), read: true },
+      { icon: '📊', bg: 'var(--lavender-light)', text: 'Tvůj cyklus je pravidelný – skvělé!', time: new Date(2026, 2, 1, 10, 0).toISOString(), read: true },
+      { icon: '🔴', bg: 'var(--period-light)', text: 'Zítra pravděpodobně začne menstruace', time: new Date(2026, 1, 21, 9, 0).toISOString(), read: true },
+      { icon: '🟢', bg: 'var(--fertile-light)', text: 'Plodné okno začíná za 2 dny', time: new Date(2026, 1, 7, 9, 0).toISOString(), read: true },
+      { icon: '🧡', bg: 'var(--pms-light)', text: 'PMS období – odpočívej a pij hodně vody', time: new Date(2026, 1, 17, 14, 0).toISOString(), read: true },
+      { icon: '💊', bg: 'var(--lavender-light)', text: 'Nezapomeň vzít antikoncepci', time: new Date(2026, 1, 15, 8, 0).toISOString(), read: true },
+    ];
+    notifications = demoNotifs;
+  }
+
+  // Add new notifs at top
+  newNotifs.forEach(n => {
+    n.read = false;
+    // Avoid duplicates today
+    const todayStr = fmtDate(now);
+    const exists = notifications.some(ex => ex.text === n.text && ex.time.startsWith(todayStr));
+    if (!exists) notifications.unshift(n);
+  });
+
+  // Keep last 10
+  notifications = notifications.slice(0, 10);
+  saveData();
+}
+
+function openNotifPanel() {
+  document.getElementById('notifPanel').classList.add('open');
+  notifications.forEach(n => n.read = true);
+  document.getElementById('notifBadge').classList.remove('show');
+  saveData();
+  renderNotifications();
+}
+
+function closeNotifPanel() {
+  document.getElementById('notifPanel').classList.remove('open');
+}
+
+function renderNotifications() {
+  const container = document.getElementById('notifList');
+  container.innerHTML = '';
+  notifications.forEach(n => {
+    const d = new Date(n.time);
+    const timeStr = `${d.getDate()}.${d.getMonth()+1}. ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
+    const item = document.createElement('div');
+    item.className = 'notif-item';
+    item.innerHTML = `
+      <div class="notif-icon" style="background:${n.bg}">${n.icon}</div>
+      <div>
+        <div class="notif-text">${n.text}</div>
+        <div class="notif-time">${timeStr}</div>
+      </div>
+    `;
+    container.appendChild(item);
+  });
+}
+
+// ========== DARK MODE ==========
+function toggleDarkMode() {
+  settings.darkMode = !settings.darkMode;
+  applyDarkMode();
+  saveData();
+}
+
+function applyDarkMode() {
+  document.documentElement.setAttribute('data-theme', settings.darkMode ? 'dark' : 'light');
+  document.getElementById('darkToggle').classList.toggle('on', settings.darkMode);
+  document.querySelector('meta[name="theme-color"]').content = settings.darkMode ? '#1a1a2e' : '#F48FB1';
+}
+
+// ========== CONCEPTION MODE ==========
+function toggleConception() {
+  settings.conceptionMode = !settings.conceptionMode;
+  document.getElementById('conceptionToggle').classList.toggle('on', settings.conceptionMode);
+  saveData();
+  updateStats();
+}
+
+// ========== CONTRACEPTION ==========
+function applyContraceptionUI() {
+  const type = settings.contraceptionType;
+  document.getElementById('pillReminderSetting').style.display = type === 'pill' ? 'flex' : 'none';
+  document.getElementById('iudExpirySetting').style.display = (type === 'iud' || type === 'implant') ? 'flex' : 'none';
+}
+
+// ========== PROFILE SYNC ==========
+function syncProfileUI() {
+  document.getElementById('darkToggle').classList.toggle('on', settings.darkMode);
+  document.getElementById('conceptionToggle').classList.toggle('on', settings.conceptionMode);
+  document.getElementById('cycleLenSlider').value = settings.cycleLength;
+  document.getElementById('cycleLenVal').textContent = settings.cycleLength + ' dní';
+  document.getElementById('periodLenSlider').value = settings.periodLength;
+  document.getElementById('periodLenVal').textContent = settings.periodLength + ' dní';
+  document.getElementById('lutealSlider').value = settings.lutealPhase;
+  document.getElementById('lutealVal').textContent = settings.lutealPhase + ' dní';
+  document.getElementById('contraceptionType').value = settings.contraceptionType;
+  document.getElementById('pillTime').value = settings.pillTime;
+  document.getElementById('iudExpiry').value = settings.iudExpiry;
+  applyContraceptionUI();
+}
+
+function updateCycleLen() {
+  const v = document.getElementById('cycleLenSlider').value;
+  settings.cycleLength = parseInt(v);
+  document.getElementById('cycleLenVal').textContent = v + ' dní';
+  saveData();
+}
+
+function updatePeriodLen() {
+  const v = document.getElementById('periodLenSlider').value;
+  settings.periodLength = parseInt(v);
+  document.getElementById('periodLenVal').textContent = v + ' dní';
+  saveData();
+}
+
+function updateLuteal() {
+  const v = document.getElementById('lutealSlider').value;
+  settings.lutealPhase = parseInt(v);
+  document.getElementById('lutealVal').textContent = v + ' dní';
+  saveData();
+}
+
+// ========== PARTNER TAB ==========
+function updatePartnerTab() {
+  // Share code
+  const codeContainer = document.getElementById('shareCode');
+  if (!settings.shareCode) settings.shareCode = generateCode();
+  codeContainer.innerHTML = settings.shareCode.split('').map(c => `<div class="code-char">${c}</div>`).join('');
+
+  // Privacy controls
+  const privContainer = document.getElementById('privacyControls');
+  const items = [
+    { key: 'fertileDays', label: 'Plodné dny' },
+    { key: 'period', label: 'Menstruace' },
+    { key: 'moods', label: 'Nálady' },
+    { key: 'symptoms', label: 'Symptomy' },
+    { key: 'predictions', label: 'Predikce' },
+  ];
+  privContainer.innerHTML = '';
+  items.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'privacy-item';
+    const checked = settings.privacy[item.key];
+    div.innerHTML = `
+      <div class="privacy-check ${checked ? 'checked' : ''}" onclick="togglePrivacy('${item.key}', this)">
+        ${checked ? '✓' : ''}
+      </div>
+      <span class="privacy-label">${item.label}</span>
+    `;
+    privContainer.appendChild(div);
+  });
+
+  // Partner email
+  document.getElementById('partnerEmail').value = settings.partnerEmail || '';
+
+  // Preview
+  updatePartnerPreview();
+}
+
+function togglePrivacy(key, el) {
+  settings.privacy[key] = !settings.privacy[key];
+  el.classList.toggle('checked');
+  el.textContent = settings.privacy[key] ? '✓' : '';
+  saveData();
+  updatePartnerPreview();
+}
+
+function updatePartnerPreview() {
+  const preview = document.getElementById('partnerPreview');
+  const phase = getCurrentPhase();
+  const pred = getPredictions();
+  const cycleDay = getCurrentCycleDay();
+  let html = '';
+
+  if (settings.privacy.predictions && pred) {
+    const nextP = parseDate(pred.nextPeriod);
+    const today = new Date(); today.setHours(0,0,0,0);
+    const daysUntil = Math.ceil((nextP - today) / (1000*60*60*24));
+    html += `<div>📅 Fáze: <strong>${phase.name}</strong> (Den ${cycleDay})</div>`;
+    html += `<div>🔮 Další menstruace: <strong>za ${daysUntil} dní</strong></div>`;
+  }
+  if (settings.privacy.period) {
+    html += `<div>🔴 Menstruace: <strong>${phase.name === 'Menstruace' ? 'Probíhá' : 'Neprobíhá'}</strong></div>`;
+  }
+  if (settings.privacy.fertileDays && pred) {
+    html += `<div>🟢 Plodné okno: <strong>${formatDateRange(pred.fertileStart, pred.fertileEnd)}</strong></div>`;
+  }
+  if (settings.privacy.moods) {
+    const today = fmtDate(new Date());
+    const dd = dayData[today];
+    const moods = dd ? (dd.symptoms || []).filter(s => ['good_mood','bad_mood','irritable','crying'].includes(s)) : [];
+    const moodEmojis = moods.map(m => SYMPTOMS.find(s => s.id === m)?.emoji || '').join(' ');
+    html += `<div>💭 Nálada: <strong>${moodEmojis || 'Nezaznamenáno'}</strong></div>`;
+  }
+
+  if (!html) html = '<em style="color:var(--gray)">Žádné údaje nejsou sdíleny</em>';
+  preview.innerHTML = html;
+}
+
+function generateShareCode() {
+  settings.shareCode = generateCode();
+  saveData();
+  updatePartnerTab();
+}
+
+function disconnectPartner() {
+  if (confirm('Opravdu chceš odpojit partnera? Kód bude zneplatněn.')) {
+    settings.shareCode = generateCode();
+    settings.partnerEmail = '';
+    saveData();
+    updatePartnerTab();
+  }
+}
+
+// ========== DOCTOR EXPORT ==========
+function exportDoctor() {
+  const pred = getPredictions();
+  const starts = getCycleStarts();
+  const lengths = getCycleLengths();
+
+  let html = `<!DOCTYPE html><html lang="cs"><head><meta charset="UTF-8"><title>MůjCyklus – Lékařský report</title>
+<style>
+  body { font-family: 'Segoe UI', sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; color: #333; }
+  h1 { color: #F48FB1; border-bottom: 2px solid #F48FB1; padding-bottom: 10px; }
+  h2 { color: #555; margin-top: 30px; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+  th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
+  th { background: #FCE4EC; color: #333; }
+  .alert { background: #FFF3E0; border-left: 4px solid #FFB74D; padding: 12px; margin: 10px 0; border-radius: 4px; }
+  .stat-box { display: inline-block; padding: 12px 24px; margin: 8px; background: #F5F5F5; border-radius: 8px; text-align: center; }
+  .stat-box .num { font-size: 28px; font-weight: bold; color: #F48FB1; }
+  .stat-box .label { font-size: 12px; color: #888; }
+  @media print { body { margin: 20px; } }
+</style></head><body>
+<h1>MůjCyklus – Lékařský report</h1>
+<p>Vygenerováno: ${new Date().toLocaleDateString('cs-CZ')} | MůjCyklus v2.0</p>
+
+<h2>Shrnutí</h2>
+<div class="stat-box"><div class="num">${pred ? pred.avgCycle : '-'}</div><div class="label">Průměrný cyklus (dny)</div></div>
+<div class="stat-box"><div class="num">${pred ? pred.avgPeriod : '-'}</div><div class="label">Průměrná menstruace (dny)</div></div>
+<div class="stat-box"><div class="num">${lengths.length + 1}</div><div class="label">Sledovaných cyklů</div></div>
+<div class="stat-box"><div class="num">${pred ? pred.confidence + '%' : '-'}</div><div class="label">Pravidelnost</div></div>
+
+<h2>Přehled cyklů</h2>
+<table><tr><th>Začátek</th><th>Délka cyklu</th><th>Délka menstruace</th></tr>`;
+
+  starts.forEach((s, i) => {
+    const d = parseDate(s);
+    let pLen = 0;
+    let dt = new Date(d);
+    while (dayData[fmtDate(dt)] && dayData[fmtDate(dt)].period) { pLen++; dt.setDate(dt.getDate()+1); if(pLen>15) break; }
+    html += `<tr><td>${d.toLocaleDateString('cs-CZ')}</td><td>${i < lengths.length ? lengths[i] + ' dní' : 'Aktuální'}</td><td>${pLen} dní</td></tr>`;
+  });
+
+  html += `</table>`;
+
+  // Symptom frequency
+  const symFreq = {};
+  Object.values(dayData).forEach(dd => {
+    (dd.symptoms || []).forEach(s => { symFreq[s] = (symFreq[s] || 0) + 1; });
+  });
+
+  html += `<h2>Častost symptomů</h2><table><tr><th>Symptom</th><th>Počet dní</th></tr>`;
+  Object.entries(symFreq).sort((a,b) => b[1] - a[1]).forEach(([id, count]) => {
+    const sym = SYMPTOMS.find(s => s.id === id);
+    html += `<tr><td>${sym ? sym.emoji + ' ' + sym.label : id}</td><td>${count}×</td></tr>`;
+  });
+  html += `</table>`;
+
+  // Irregularities
+  if (lengths.length >= 2) {
+    const maxDiff = Math.max(...lengths) - Math.min(...lengths);
+    if (maxDiff > 5) html += `<div class="alert"><strong>⚠️ Poznámka:</strong> Rozdíl mezi nejkratším a nejdelším cyklem je ${maxDiff} dní.</div>`;
+  }
+
+  // Cycle length chart (simple text-based)
+  html += `<h2>Délky cyklů</h2><div style="display:flex;align-items:flex-end;gap:8px;height:120px;padding:20px 0">`;
+  lengths.forEach((l, i) => {
+    const h = Math.round((l / 40) * 100);
+    html += `<div style="flex:1;text-align:center"><div style="background:#F48FB1;height:${h}px;border-radius:4px 4px 0 0;margin-bottom:4px"></div><div style="font-size:12px">${l}</div></div>`;
+  });
+  html += `</div>`;
+
+  html += `<p style="margin-top:40px;color:#999;font-size:12px">Tento report byl vygenerován aplikací MůjCyklus a slouží jako podklad pro konzultaci s lékařem.</p></body></html>`;
+
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+}
+
+// ========== JSON EXPORT ==========
+function exportJSON() {
+  const data = {
+    settings: settings,
+    dayData: dayData,
+    notifications: notifications,
+    exportDate: new Date().toISOString(),
+    version: '2.0'
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'mujcyklus_export_' + fmtDate(new Date()) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ========== DELETE DATA ==========
+function deleteAllData() {
+  if (confirm('Opravdu chceš smazat VŠECHNA data? Tato akce je nevratná!')) {
+    if (confirm('Jsi si opravdu jistá?')) {
+      localStorage.removeItem('mujcyklus_settings');
+      localStorage.removeItem('mujcyklus_daydata');
+      localStorage.removeItem('mujcyklus_notifs');
+      localStorage.removeItem('mujcyklus_partner');
+      location.reload();
+    }
+  }
+}
+
+// ========== START ==========
+init();
+</script>
+</body>
+</html>
