@@ -1062,6 +1062,18 @@ body {
       <div class="profile-section" style="padding-top:16px">
 
         <div class="setting-group">
+          <div class="setting-group-title">O mně</div>
+          <div class="setting-item">
+            <label>Jméno</label>
+            <input type="text" class="setting-select" id="userName" placeholder="Tvoje jméno" onchange="saveSettings()" style="text-align:right;border:none;background:transparent;font-size:14px;color:var(--text)">
+          </div>
+          <div class="setting-item">
+            <label>Věk</label>
+            <input type="number" class="setting-select" id="userAge" placeholder="25" min="12" max="60" onchange="saveSettings()" style="text-align:right;border:none;background:transparent;font-size:14px;color:var(--text);width:60px">
+          </div>
+        </div>
+
+        <div class="setting-group">
           <div class="setting-group-title">Zobrazení</div>
           <div class="setting-item">
             <label>Tmavý režim</label>
@@ -1314,6 +1326,8 @@ let state = {
 };
 
 let settings = {
+  userName: '',
+  userAge: '',
   darkMode: false,
   cycleLength: 28,
   periodLength: 5,
@@ -1347,6 +1361,8 @@ function init() {
   updatePartnerTab();
   applyDarkMode();
   applyContraceptionUI();
+  if (settings.userName) document.getElementById('userName').value = settings.userName;
+  if (settings.userAge) document.getElementById('userAge').value = settings.userAge;
 
   // Check unread notifications
   const unread = notifications.filter(n => !n.read).length;
@@ -1383,6 +1399,8 @@ function saveData() {
 }
 
 function saveSettings() {
+  settings.userName = document.getElementById('userName').value;
+  settings.userAge = document.getElementById('userAge').value;
   settings.contraceptionType = document.getElementById('contraceptionType').value;
   settings.pillTime = document.getElementById('pillTime').value;
   settings.iudExpiry = document.getElementById('iudExpiry').value;
