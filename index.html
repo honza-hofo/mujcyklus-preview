@@ -1093,6 +1093,52 @@ body {
       </div>
     </div>
 
+    <!-- AI TAB -->
+    <div class="tab-view" id="tabAI">
+      <div style="padding:16px">
+        <h2 style="font-size:20px;font-weight:700;margin-bottom:16px">AI Asistentka</h2>
+
+        <!-- Quick actions -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
+          <button onclick="aiAnalyze()" style="padding:16px 12px;background:var(--period-light);border:1px solid var(--period);border-radius:12px;cursor:pointer;font-family:inherit;text-align:left">
+            <div style="font-size:18px;margin-bottom:6px">📊</div>
+            <div style="font-size:13px;font-weight:600;color:var(--text)">Analýza cyklu</div>
+            <div style="font-size:11px;color:var(--gray);margin-top:2px">Pravidelnost a vzorce</div>
+          </button>
+          <button onclick="aiAsk('Jaké jsou moje plodné dny tento měsíc a kdy je nejlepší čas na početí?')" style="padding:16px 12px;background:var(--fertile-light);border:1px solid var(--fertile);border-radius:12px;cursor:pointer;font-family:inherit;text-align:left">
+            <div style="font-size:18px;margin-bottom:6px">🌱</div>
+            <div style="font-size:13px;font-weight:600;color:var(--text)">Plodné dny</div>
+            <div style="font-size:11px;color:var(--gray);margin-top:2px">Predikce a doporučení</div>
+          </button>
+          <button onclick="aiAsk('Na základě mých symptomů a nálad, co by mohlo být příčinou? Měla bych se obávat?')" style="padding:16px 12px;background:#FFF3E0;border:1px solid #FFB74D;border-radius:12px;cursor:pointer;font-family:inherit;text-align:left">
+            <div style="font-size:18px;margin-bottom:6px">🩺</div>
+            <div style="font-size:13px;font-weight:600;color:var(--text)">Symptomy</div>
+            <div style="font-size:11px;color:var(--gray);margin-top:2px">Možné příčiny</div>
+          </button>
+          <button onclick="aiAsk('Jak můj cyklus ovlivňuje moje nálady? Vidíš nějaký vzorec?')" style="padding:16px 12px;background:#E8EAF6;border:1px solid #7986CB;border-radius:12px;cursor:pointer;font-family:inherit;text-align:left">
+            <div style="font-size:18px;margin-bottom:6px">😊</div>
+            <div style="font-size:13px;font-weight:600;color:var(--text)">Nálady vs cyklus</div>
+            <div style="font-size:11px;color:var(--gray);margin-top:2px">Vzorce a predikce</div>
+          </button>
+        </div>
+
+        <!-- Chat -->
+        <div style="background:var(--card-bg);border-radius:12px;border:1px solid var(--border);overflow:hidden">
+          <div id="aiChat" style="min-height:200px;max-height:400px;overflow-y:auto;padding:16px">
+            <div style="text-align:center;color:var(--gray);font-size:13px;padding:40px 20px">
+              Zeptej se mě na cokoliv ohledně tvého cyklu, symptomů nebo zdraví.
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;padding:12px;border-top:1px solid var(--border)">
+            <input type="text" id="aiInput" placeholder="Napiš otázku..." style="flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;outline:none;background:var(--bg);color:var(--dark)" onkeydown="if(event.key==='Enter')aiSend()">
+            <button onclick="aiSend()" style="padding:10px 16px;background:var(--period);color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;font-family:inherit">Odeslat</button>
+          </div>
+        </div>
+
+        <p style="font-size:11px;color:var(--gray);margin-top:12px;text-align:center">AI asistentka nenahrazuje návštěvu lékaře. V případě zdravotních potíží se obraťte na gynekologa.</p>
+      </div>
+    </div>
+
     <!-- COMMUNITY TAB -->
     <div class="tab-view" id="tabCommunity">
       <div class="topic-tabs" id="topicTabs">
@@ -1268,6 +1314,9 @@ body {
     <button class="nav-item" onclick="switchTab('Stats')">
       <span class="icon">📊</span>Přehled
     </button>
+    <button class="nav-item" onclick="switchTab('AI')">
+      <span class="icon">🤖</span>AI
+    </button>
     <button class="nav-item" onclick="switchTab('Community')">
       <span class="icon">💬</span>Komunita
     </button>
@@ -1414,6 +1463,59 @@ let settings = {
 
 let dayData = {}; // key: "YYYY-MM-DD", value: { period, flow, symptoms[], temp, notes, intercourse }
 let notifications = [];
+
+// ========== AI ==========
+async function aiAnalyze() {
+  aiShowLoading();
+  try {
+    const headers = {'Content-Type': 'application/json'};
+    if (window._csrf) headers['X-CSRF-Token'] = window._csrf;
+    const resp = await fetch('/api/ai/analyze', { method: 'POST', headers, body: '{}' });
+    const data = await resp.json();
+    aiShowResponse(data.analysis || data.error);
+  } catch(e) { aiShowResponse('Chyba spojení se serverem.'); }
+}
+
+async function aiAsk(question) {
+  aiShowLoading();
+  try {
+    const headers = {'Content-Type': 'application/json'};
+    if (window._csrf) headers['X-CSRF-Token'] = window._csrf;
+    const resp = await fetch('/api/ai/analyze', { method: 'POST', headers, body: JSON.stringify({question}) });
+    const data = await resp.json();
+    aiShowResponse(data.analysis || data.error);
+  } catch(e) { aiShowResponse('Chyba spojení se serverem.'); }
+}
+
+function aiSend() {
+  const input = document.getElementById('aiInput');
+  const q = input.value.trim();
+  if (!q) return;
+  input.value = '';
+
+  // Show user message
+  const chat = document.getElementById('aiChat');
+  chat.innerHTML += '<div style="text-align:right;margin-bottom:12px"><span style="display:inline-block;background:var(--period);color:#fff;padding:8px 14px;border-radius:12px 12px 2px 12px;font-size:13px;max-width:80%">' + q.replace(/</g,'&lt;') + '</span></div>';
+  chat.scrollTop = chat.scrollHeight;
+
+  aiAsk(q);
+}
+
+function aiShowLoading() {
+  const chat = document.getElementById('aiChat');
+  chat.innerHTML += '<div id="aiLoading" style="margin-bottom:12px"><span style="display:inline-block;background:var(--card-bg);border:1px solid var(--border);padding:8px 14px;border-radius:12px 12px 12px 2px;font-size:13px;color:var(--gray)">Přemýšlím...</span></div>';
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function aiShowResponse(text) {
+  const loading = document.getElementById('aiLoading');
+  if (loading) loading.remove();
+  const chat = document.getElementById('aiChat');
+  // Convert markdown-like formatting
+  const formatted = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+  chat.innerHTML += '<div style="margin-bottom:12px"><span style="display:inline-block;background:var(--card-bg);border:1px solid var(--border);padding:12px 16px;border-radius:12px 12px 12px 2px;font-size:13px;line-height:1.6;max-width:90%;color:var(--dark)">' + formatted + '</span></div>';
+  chat.scrollTop = chat.scrollHeight;
+}
 
 // ========== INIT ==========
 function init() {
@@ -1960,7 +2062,7 @@ function switchTab(tab) {
   document.querySelectorAll('.tab-view').forEach(v => v.classList.remove('active'));
   document.getElementById('tab' + tab).classList.add('active');
   document.querySelectorAll('.nav-item').forEach((n, i) => {
-    n.classList.toggle('active', ['Calendar','Stats','Community','Profile','Partner'][i] === tab);
+    n.classList.toggle('active', ['Calendar','Stats','AI','Community','Profile','Partner'][i] === tab);
   });
 
   if (tab === 'Stats') updateStats();

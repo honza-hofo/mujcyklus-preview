@@ -445,4 +445,71 @@ app.delete('/api/partner/share', requireAuth, async (req, res) => {
   }
 });
 
+// AI Analysis
+app.post('/api/ai/analyze', requireAuth, async (req, res) => {
+  try {
+    const userData = await pool.query('SELECT settings, day_data FROM mc_user_data WHERE user_id = $1', [req.session.userId]);
+    const user = await pool.query('SELECT name, age FROM mc_users WHERE id = $1', [req.session.userId]);
+    if (!userData.rows.length) return res.json({ analysis: 'Nedostatek dat pro analýzu.' });
+
+    const settings = userData.rows[0].settings || {};
+    const dayData = userData.rows[0].day_data || {};
+    const age = user.rows[0]?.age || null;
+    const { question } = req.body;
+
+    // Prepare cycle summary
+    const periodDays = Object.entries(dayData).filter(([k,v]) => v.period).map(([k]) => k).sort();
+    const moodEntries = Object.entries(dayData).filter(([k,v]) => v.mood).map(([k,v]) => `${k}: ${v.mood}`);
+    const symptomEntries = Object.entries(dayData).filter(([k,v]) => v.symptoms && v.symptoms.length > 0).map(([k,v]) => `${k}: ${v.symptoms.join(', ')}`);
+
+    const systemPrompt = `Jsi laskavá a profesionální AI asistentka v aplikaci MůjCyklus (menstruační kalendář). Odpovídáš česky, stručně a srozumitelně. Nejsi lékařka - vždy upozorni že tvoje rady nenahrazují návštěvu gynekologa. Používej přátelský tón.
+
+Data uživatelky:
+- Věk: ${age || 'neuvedeno'}
+- Délka cyklu: ${settings.cycleLength || 28} dní
+- Délka menstruace: ${settings.periodLength || 5} dní
+- Zaznamenané dny menstruace: ${periodDays.slice(-30).join(', ') || 'žádné'}
+- Nálady (posledních 30 záznamů): ${moodEntries.slice(-15).join('; ') || 'žádné'}
+- Symptomy (posledních 30 záznamů): ${symptomEntries.slice(-15).join('; ') || 'žádné'}`;
+
+    let userPrompt;
+    if (question) {
+      userPrompt = question;
+    } else {
+      userPrompt = 'Proveď kompletní analýzu mého cyklu. Zaměř se na: 1) Pravidelnost cyklu 2) Vzorce v náladách a symptomech 3) Případná upozornění na anomálie 4) Doporučení. Buď stručná, max 300 slov.';
+    }
+
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) return res.json({ analysis: 'AI analýza není dostupná (chybí API klíč).' });
+
+    const https = require('https');
+    const postData = JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 800,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userPrompt }]
+    });
+
+    const aiResp = await new Promise((resolve, reject) => {
+      const aiReq = https.request({
+        hostname: 'api.anthropic.com', path: '/v1/messages', method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'Content-Length': Buffer.byteLength(postData) }
+      }, (aiRes) => {
+        let data = '';
+        aiRes.on('data', d => data += d);
+        aiRes.on('end', () => resolve(JSON.parse(data)));
+      });
+      aiReq.on('error', reject);
+      aiReq.write(postData);
+      aiReq.end();
+    });
+
+    const text = aiResp.content?.[0]?.text || 'Nepodařilo se získat analýzu.';
+    res.json({ analysis: text });
+  } catch (e) {
+    console.error('AI error:', e);
+    res.status(500).json({ error: 'Chyba AI analýzy' });
+  }
+});
+
 app.listen(PORT, () => console.log(`MujCyklus server on port ${PORT}`));
