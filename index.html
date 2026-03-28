@@ -1231,7 +1231,9 @@ body {
         <h3 style="font-size:18px;margin-bottom:8px">💑 Párový mód</h3>
         <p style="font-size:13px;color:var(--gray);margin-bottom:16px">Sdílej svůj cyklus s partnerem</p>
         <div class="share-code" id="shareCode"></div>
-        <button class="action-btn secondary" style="margin-top:12px" onclick="generateShareCode()">Nový kód</button>
+        <div id="shareCodeDisplay" style="display:none;margin-top:12px;padding:12px;background:var(--gray-light);border-radius:var(--radius-sm);font-size:24px;font-weight:800;letter-spacing:6px;color:var(--pink)"></div>
+        <div id="shareLinkDisplay" style="display:none;margin-top:8px;padding:10px;background:var(--gray-light);border-radius:var(--radius-sm);font-size:11px;color:var(--dark-secondary);word-break:break-all;cursor:pointer" onclick="navigator.clipboard.writeText(this.textContent).then(()=>alert('Odkaz zkopírován!'))"></div>
+        <button class="action-btn secondary" style="margin-top:12px" onclick="generateShareCode()">Sdílet cyklus</button>
       </div>
 
       <div class="card">
@@ -1242,7 +1244,7 @@ body {
       <div class="card">
         <h3 style="font-size:15px;margin-bottom:12px">📧 Email partnera</h3>
         <input type="email" class="temp-input" placeholder="email@example.com" id="partnerEmail" style="width:100%;margin-bottom:8px" onchange="saveSettings()">
-        <p style="font-size:12px;color:var(--gray)">Partner bude dostávat upozornění dle nastavení soukromí</p>
+        <p style="font-size:12px;color:var(--gray)">Partner dostane email s odkazem na sdílený cyklus</p>
       </div>
 
       <div class="card">
@@ -2499,17 +2501,73 @@ function updatePartnerPreview() {
   preview.innerHTML = html;
 }
 
-function generateShareCode() {
-  settings.shareCode = generateCode();
-  saveData();
-  updatePartnerTab();
+async function generateShareCode() {
+  const email = document.getElementById('partnerEmail').value;
+  const showPeriod = settings.privacy.period;
+  const showFertile = settings.privacy.fertileDays;
+  const showMoods = settings.privacy.moods;
+  const showSymptoms = settings.privacy.symptoms;
+
+  const headers = {'Content-Type': 'application/json'};
+  if (window._csrf) headers['X-CSRF-Token'] = window._csrf;
+
+  try {
+    const resp = await fetch('/api/partner/share', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ partnerEmail: email, showPeriod, showFertile, showMoods, showSymptoms })
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      settings.shareCode = data.code;
+      saveData();
+      const codeEl = document.getElementById('shareCodeDisplay');
+      if (codeEl) {
+        codeEl.textContent = data.code;
+        codeEl.style.display = 'block';
+      }
+      const linkEl = document.getElementById('shareLinkDisplay');
+      if (linkEl) {
+        linkEl.textContent = window.location.origin + '/partner.html?code=' + data.code;
+        linkEl.style.display = 'block';
+      }
+      if (email) alert('Odkaz byl odeslán na ' + email);
+      updatePartnerTab();
+    }
+  } catch(e) {
+    console.error('Share error:', e);
+  }
 }
 
-function disconnectPartner() {
+async function loadShareSettings() {
+  try {
+    const resp = await fetch('/api/partner/share');
+    const data = await resp.json();
+    if (data.share_code) {
+      settings.shareCode = data.share_code;
+      const codeEl = document.getElementById('shareCodeDisplay');
+      if (codeEl) { codeEl.textContent = data.share_code; codeEl.style.display = 'block'; }
+      const linkEl = document.getElementById('shareLinkDisplay');
+      if (linkEl) { linkEl.textContent = window.location.origin + '/partner.html?code=' + data.share_code; linkEl.style.display = 'block'; }
+      if (data.partner_email) { const emailEl = document.getElementById('partnerEmail'); if (emailEl) emailEl.value = data.partner_email; }
+    }
+  } catch(e) {}
+}
+
+async function disconnectPartner() {
   if (confirm('Opravdu chceš odpojit partnera? Kód bude zneplatněn.')) {
+    try {
+      const headers = {};
+      if (window._csrf) headers['X-CSRF-Token'] = window._csrf;
+      await fetch('/api/partner/share', { method: 'DELETE', headers });
+    } catch(e) {}
     settings.shareCode = generateCode();
     settings.partnerEmail = '';
     saveData();
+    const codeEl = document.getElementById('shareCodeDisplay');
+    if (codeEl) { codeEl.textContent = ''; codeEl.style.display = 'none'; }
+    const linkEl = document.getElementById('shareLinkDisplay');
+    if (linkEl) { linkEl.textContent = ''; linkEl.style.display = 'none'; }
     updatePartnerTab();
   }
 }
@@ -2748,6 +2806,7 @@ async function loadFromServer() {
     applyContraceptionUI();
     if (settings.userName) document.getElementById('userName').value = settings.userName;
     if (settings.userAge) document.getElementById('userAge').value = settings.userAge;
+    loadShareSettings();
   } catch (e) {}
 }
 

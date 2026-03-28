@@ -63,6 +63,17 @@ async function initDB() {
         email VARCHAR(255),
         attempted_at TIMESTAMP DEFAULT NOW()
       );
+      CREATE TABLE IF NOT EXISTS mc_partner_shares (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES mc_users(id) ON DELETE CASCADE,
+        share_code VARCHAR(6) UNIQUE NOT NULL,
+        partner_email VARCHAR(255),
+        show_period BOOLEAN DEFAULT true,
+        show_fertile BOOLEAN DEFAULT true,
+        show_moods BOOLEAN DEFAULT false,
+        show_symptoms BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
     `);
     console.log('DB tables ready');
   } catch (e) {
@@ -313,5 +324,125 @@ app.get('/api/export', requireAuth, async (req, res) => {
 // Landing = default, app = /app
 app.get('/app', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/landing', (req, res) => res.sendFile(path.join(__dirname, 'landing.html')));
+
+// Generate partner share code
+app.post('/api/partner/share', requireAuth, async (req, res) => {
+  try {
+    const { partnerEmail, showPeriod, showFertile, showMoods, showSymptoms } = req.body;
+
+    // Check if user already has a share
+    const existing = await pool.query('SELECT id, share_code FROM mc_partner_shares WHERE user_id = $1', [req.session.userId]);
+
+    let code;
+    if (existing.rows.length > 0) {
+      // Update existing
+      code = existing.rows[0].share_code;
+      await pool.query(
+        'UPDATE mc_partner_shares SET partner_email = $1, show_period = $2, show_fertile = $3, show_moods = $4, show_symptoms = $5 WHERE user_id = $6',
+        [partnerEmail || null, showPeriod !== false, showFertile !== false, showMoods || false, showSymptoms || false, req.session.userId]
+      );
+    } else {
+      // Create new
+      code = Math.random().toString(36).substring(2, 8).toUpperCase();
+      await pool.query(
+        'INSERT INTO mc_partner_shares (user_id, share_code, partner_email, show_period, show_fertile, show_moods, show_symptoms) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+        [req.session.userId, code, partnerEmail || null, showPeriod !== false, showFertile !== false, showMoods || false, showSymptoms || false]
+      );
+    }
+
+    // Send email to partner if email provided
+    if (partnerEmail) {
+      try {
+        const user = await pool.query('SELECT name, email FROM mc_users WHERE id = $1', [req.session.userId]);
+        const userName = user.rows[0].name || user.rows[0].email;
+        await transporter.sendMail({
+          from: '"MůjCyklus" <honza@hofo.cz>',
+          to: partnerEmail,
+          subject: userName + ' s tebou sdílí svůj cyklus',
+          html: '<div style="font-family:sans-serif;max-width:400px;margin:0 auto;padding:32px;text-align:center">' +
+            '<h2 style="color:#E8577D">MůjCyklus</h2>' +
+            '<p><strong>' + userName + '</strong> s tebou sdílí přehled svého cyklu.</p>' +
+            '<p>Otevři tento odkaz:</p>' +
+            '<a href="https://mujcyklus-preview.onrender.com/partner.html?code=' + code + '" style="display:inline-block;padding:14px 32px;background:#E8577D;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;margin:16px 0">Zobrazit cyklus</a>' +
+            '<p style="color:#888;font-size:13px;margin-top:16px">Nebo zadej kód: <strong>' + code + '</strong></p>' +
+            '</div>'
+        });
+      } catch (emailErr) {
+        console.error('Partner email error:', emailErr);
+      }
+    }
+
+    res.json({ ok: true, code });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Chyba serveru' });
+  }
+});
+
+// Get partner share settings
+app.get('/api/partner/share', requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT share_code, partner_email, show_period, show_fertile, show_moods, show_symptoms FROM mc_partner_shares WHERE user_id = $1', [req.session.userId]);
+    if (result.rows.length > 0) {
+      res.json(result.rows[0]);
+    } else {
+      res.json({ share_code: null });
+    }
+  } catch (e) {
+    res.status(500).json({ error: 'Chyba serveru' });
+  }
+});
+
+// Partner view - get shared data (no auth needed, uses code)
+app.get('/api/partner/view/:code', async (req, res) => {
+  try {
+    const share = await pool.query(
+      'SELECT s.*, u.name, u.email FROM mc_partner_shares s JOIN mc_users u ON s.user_id = u.id WHERE s.share_code = $1',
+      [req.params.code.toUpperCase()]
+    );
+    if (share.rows.length === 0) return res.status(404).json({ error: 'Neplatný kód' });
+
+    const s = share.rows[0];
+    const data = await pool.query('SELECT settings, day_data FROM mc_user_data WHERE user_id = $1', [s.user_id]);
+
+    if (data.rows.length === 0) return res.json({ name: s.name, data: {} });
+
+    const settings = JSON.parse(typeof data.rows[0].settings === 'string' ? data.rows[0].settings : JSON.stringify(data.rows[0].settings));
+    const dayData = JSON.parse(typeof data.rows[0].day_data === 'string' ? data.rows[0].day_data : JSON.stringify(data.rows[0].day_data));
+
+    // Filter based on permissions
+    const filtered = {};
+    for (const [date, dd] of Object.entries(dayData)) {
+      const entry = {};
+      if (s.show_period && dd.period) entry.period = true;
+      if (s.show_moods && dd.mood) entry.mood = dd.mood;
+      if (s.show_symptoms && dd.symptoms) entry.symptoms = dd.symptoms;
+      if (Object.keys(entry).length > 0) filtered[date] = entry;
+    }
+
+    res.json({
+      name: s.name || s.email.split('@')[0],
+      showPeriod: s.show_period,
+      showFertile: s.show_fertile,
+      showMoods: s.show_moods,
+      showSymptoms: s.show_symptoms,
+      settings: { cycleLength: settings.cycleLength || 28, periodLength: settings.periodLength || 5, lutealPhase: settings.lutealPhase || 14 },
+      dayData: filtered
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Chyba serveru' });
+  }
+});
+
+// Delete partner share
+app.delete('/api/partner/share', requireAuth, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM mc_partner_shares WHERE user_id = $1', [req.session.userId]);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Chyba serveru' });
+  }
+});
 
 app.listen(PORT, () => console.log(`MujCyklus server on port ${PORT}`));

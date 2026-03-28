@@ -323,6 +323,154 @@ function toggleDark() {
   localStorage.setItem('mujcyklus_partner_dark', darkMode ? '1' : '0');
 }
 
+// Get code from URL
+const urlParams = new URLSearchParams(window.location.search);
+let partnerCode = urlParams.get('code') || '';
+
+async function loadPartnerData(code) {
+  try {
+    const resp = await fetch('/api/partner/view/' + code);
+    if (!resp.ok) {
+      document.getElementById('content').innerHTML = '<div class="no-data"><div class="icon">🔒</div><p>Neplatný kód<br><span style="color:var(--gray)">Zkontroluj kód a zkus to znovu.</span></p></div>';
+      return;
+    }
+    const data = await resp.json();
+    renderPartnerView(data);
+  } catch(e) {
+    document.getElementById('content').innerHTML = '<div class="no-data"><div class="icon">⚠️</div><p>Chyba spojení</p></div>';
+  }
+}
+
+function renderPartnerView(data) {
+  const content = document.getElementById('content');
+  content.innerHTML = '';
+
+  // Name header
+  content.innerHTML += '<div class="card" style="text-align:center"><h2 style="font-size:18px;color:var(--pink)">' + (data.name || 'Partner') + '</h2><p style="font-size:13px;color:var(--gray)">sdílí s tebou svůj cyklus</p></div>';
+
+  // Calculate cycle info from dayData and settings
+  const cycleLength = data.settings?.cycleLength || 28;
+  const periodLength = data.settings?.periodLength || 5;
+  const lutealPhase = data.settings?.lutealPhase || 14;
+
+  // Find last period start from dayData
+  const periodDates = Object.keys(data.dayData || {}).filter(d => data.dayData[d].period).sort();
+  let lastPeriodStart = null;
+  let cycleDay = null;
+  let phase = { name: 'Neznámá' };
+
+  if (periodDates.length > 0) {
+    // Find start of last period (first day after a gap)
+    const sorted = periodDates.sort().reverse();
+    lastPeriodStart = sorted[0];
+    for (let i = 0; i < sorted.length - 1; i++) {
+      const curr = parseDate(sorted[i]);
+      const next = parseDate(sorted[i+1]);
+      const diff = (curr - next) / (1000*60*60*24);
+      if (diff > 1) { lastPeriodStart = sorted[i]; break; }
+      lastPeriodStart = sorted[i+1];
+    }
+
+    const today = new Date(); today.setHours(0,0,0,0);
+    const lpDate = parseDate(lastPeriodStart);
+    cycleDay = Math.floor((today - lpDate) / (1000*60*60*24)) + 1;
+
+    // Determine phase
+    if (cycleDay <= periodLength) phase = { name: 'Menstruace' };
+    else if (cycleDay > cycleLength - lutealPhase - 3 && cycleDay <= cycleLength - lutealPhase + 1) phase = { name: 'Plodné dny' };
+    else if (cycleDay === cycleLength - lutealPhase + 1) phase = { name: 'Ovulace' };
+    else if (cycleDay > cycleLength - 5) phase = { name: 'PMS' };
+    else if (cycleDay <= cycleLength - lutealPhase - 3) phase = { name: 'Folikulární fáze' };
+    else phase = { name: 'Luteální fáze' };
+  }
+
+  const phaseConf = PHASE_CONFIG[phase.name] || PHASE_CONFIG['Neznámá'];
+
+  // Phase Hero
+  const heroHtml = '<div class="card"><div class="phase-hero"><div class="phase-ring"><svg width="140" height="140"><circle cx="70" cy="70" r="60" fill="none" stroke="var(--gray-light)" stroke-width="8"/><circle id="partnerRing" cx="70" cy="70" r="60" fill="none" stroke="' + (phaseConf.color || 'var(--gray)') + '" stroke-width="8" stroke-linecap="round" stroke-dasharray="377" stroke-dashoffset="377"/></svg><div class="phase-ring-center"><div class="phase-ring-day">' + (cycleDay || '-') + '</div><div class="phase-ring-label">den cyklu</div></div></div><div class="phase-name">' + phaseConf.emoji + ' ' + phase.name + '</div><div class="phase-sub">Den ' + (cycleDay || '-') + ' z ~' + cycleLength + '</div></div></div>';
+  content.innerHTML += heroHtml;
+
+  // Animate ring
+  setTimeout(function() {
+    const ring = document.getElementById('partnerRing');
+    if (ring && cycleDay) {
+      const progress = Math.min(cycleDay / cycleLength, 1);
+      ring.style.strokeDashoffset = 377 - (377 * progress);
+      ring.style.stroke = phaseConf.color;
+      ring.style.transition = 'stroke-dashoffset 1s ease-out';
+    }
+  }, 100);
+
+  // Tip card
+  if (phaseConf.tip) {
+    content.innerHTML += '<div class="tip-card"><div class="tip-emoji">' + phaseConf.tipEmoji + '</div><div class="tip-title">Tip pro tebe</div><div class="tip-text">' + phaseConf.tip + '</div></div>';
+  }
+
+  // Period status
+  if (data.showPeriod) {
+    const isPeriod = phase.name === 'Menstruace';
+    content.innerHTML += '<div class="card"><div class="info-row"><span class="info-label">🔴 Menstruace</span><span class="info-value" style="color:' + (isPeriod ? 'var(--period)' : 'var(--fertile)') + '">' + (isPeriod ? 'Probíhá' : 'Neprobíhá') + '</span></div></div>';
+  }
+
+  // Fertile window
+  if (data.showFertile && lastPeriodStart) {
+    const lpDate = parseDate(lastPeriodStart);
+    const ovDay = cycleLength - lutealPhase;
+    const fertileStartDay = ovDay - 5;
+    const fertileEndDay = ovDay + 1;
+
+    const fs = new Date(lpDate); fs.setDate(fs.getDate() + fertileStartDay - 1);
+    const fe = new Date(lpDate); fe.setDate(fe.getDate() + fertileEndDay - 1);
+    const ov = new Date(lpDate); ov.setDate(ov.getDate() + ovDay - 1);
+    const today = new Date(); today.setHours(0,0,0,0);
+    const isFertileNow = today >= fs && today <= fe;
+
+    let fertileHtml = '<div class="card"><h3 style="font-size:16px;margin-bottom:12px">🟢 Plodné okno</h3>';
+    fertileHtml += '<div class="info-row"><span class="info-label">Plodné dny</span><span class="info-value">' + fs.getDate() + '.' + (fs.getMonth()+1) + '. – ' + fe.getDate() + '.' + (fe.getMonth()+1) + '.</span></div>';
+    fertileHtml += '<div class="info-row"><span class="info-label">Ovulace</span><span class="info-value">' + ov.getDate() + '.' + (ov.getMonth()+1) + '.</span></div>';
+
+    if (isFertileNow) {
+      fertileHtml += '<div style="text-align:center;padding:12px;margin-top:8px;background:var(--fertile-light);border-radius:var(--radius-sm)"><span style="font-size:16px;font-weight:700;color:var(--ovulation)">🟢 Právě probíhá plodné okno!</span></div>';
+    }
+
+    // Mini calendar
+    fertileHtml += '<div class="mini-cal">';
+    for (let i = -3; i <= 8; i++) {
+      const d = new Date(fs); d.setDate(d.getDate() + i);
+      const dStr = fmtDate(d);
+      let cls = '';
+      if (d.getTime() === ov.getTime()) cls = 'ovulation';
+      else if (d >= fs && d <= fe) cls = 'fertile';
+      if (fmtDate(today) === dStr) cls += ' today';
+      fertileHtml += '<div class="mini-cal-day ' + cls + '">' + d.getDate() + '</div>';
+    }
+    fertileHtml += '</div></div>';
+    content.innerHTML += fertileHtml;
+  }
+
+  // Moods
+  if (data.showMoods && data.dayData) {
+    const todayStr = fmtDate(new Date());
+    const todayData = data.dayData[todayStr];
+    if (todayData && todayData.mood) {
+      content.innerHTML += '<div class="card"><h3 style="font-size:16px;margin-bottom:8px">💭 Nálada dnes</h3><div class="mood-section"><div class="mood-label">' + todayData.mood + '</div></div></div>';
+    }
+  }
+
+  // Symptoms
+  if (data.showSymptoms && data.dayData) {
+    const todayStr = fmtDate(new Date());
+    const todayData = data.dayData[todayStr];
+    if (todayData && todayData.symptoms && todayData.symptoms.length > 0) {
+      const symHtml = todayData.symptoms.map(function(s) {
+        const sym = SYMPTOMS.find(function(x) { return x.id === s; });
+        return sym ? '<span style="display:inline-block;padding:6px 12px;background:var(--gray-light);border-radius:20px;font-size:13px;margin:3px">' + sym.emoji + ' ' + sym.label + '</span>' : '';
+      }).join('');
+      content.innerHTML += '<div class="card"><h3 style="font-size:16px;margin-bottom:12px">🩺 Symptomy dnes</h3><div style="display:flex;flex-wrap:wrap;gap:4px">' + symHtml + '</div></div>';
+    }
+  }
+}
+
 function init() {
   // Dark mode
   darkMode = localStorage.getItem('mujcyklus_partner_dark') === '1';
@@ -332,194 +480,26 @@ function init() {
     document.querySelector('meta[name="theme-color"]').content = '#1a1a2e';
   }
 
-  // Load partner data
-  const raw = localStorage.getItem('mujcyklus_partner');
-  if (!raw) {
-    document.getElementById('noData').style.display = 'block';
-    return;
+  if (partnerCode) {
+    loadPartnerData(partnerCode);
+  } else {
+    // Show code entry form
+    document.getElementById('content').innerHTML = '<div class="card" style="text-align:center;padding:32px 20px">' +
+      '<div style="font-size:48px;margin-bottom:16px">💑</div>' +
+      '<h2 style="font-size:20px;margin-bottom:8px">Partnerský pohled</h2>' +
+      '<p style="color:var(--gray);font-size:14px;margin-bottom:24px">Zadej kód, který ti poslal/a partner/ka</p>' +
+      '<input type="text" id="codeInput" placeholder="ABC123" maxlength="6" style="width:100%;padding:14px;font-size:20px;text-align:center;letter-spacing:8px;border:2px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-weight:700;text-transform:uppercase;background:var(--gray-light);color:var(--dark)">' +
+      '<button onclick="submitCode()" style="width:100%;margin-top:16px;padding:14px;background:var(--pink);color:white;border:none;border-radius:var(--radius-sm);font-size:16px;font-weight:700;cursor:pointer;font-family:inherit">Zobrazit cyklus</button>' +
+      '</div>';
   }
+}
 
-  let data;
-  try { data = JSON.parse(raw); } catch(e) {
-    document.getElementById('noData').style.display = 'block';
-    return;
-  }
-
-  const privacy = data.settings?.privacy || {};
-  const phase = data.currentPhase || { name: 'Neznámá' };
-  const cycleDay = data.cycleDay;
-  const predictions = data.predictions;
-  const content = document.getElementById('content');
-  content.innerHTML = '';
-
-  // Phase Hero (always shown)
-  const phaseConf = PHASE_CONFIG[phase.name] || PHASE_CONFIG['Neznámá'];
-
-  const heroHtml = `
-    <div class="card">
-      <div class="phase-hero">
-        <div class="phase-ring">
-          <svg width="140" height="140">
-            <circle cx="70" cy="70" r="60" fill="none" stroke="var(--gray-light)" stroke-width="8"/>
-            <circle id="partnerRing" cx="70" cy="70" r="60" fill="none" stroke="${phaseConf.color === 'var(--ovulation)' ? '#4CAF50' : phaseConf.color === 'white' ? '#4CAF50' : ''}" stroke-width="8" stroke-linecap="round" stroke-dasharray="377" stroke-dashoffset="377"/>
-          </svg>
-          <div class="phase-ring-center">
-            <div class="phase-ring-day">${cycleDay || '-'}</div>
-            <div class="phase-ring-label">den cyklu</div>
-          </div>
-        </div>
-        <div class="phase-name">${phaseConf.emoji} ${phase.name}</div>
-        <div class="phase-sub">Den ${cycleDay || '-'} z ~${predictions?.avgCycle || '28'}</div>
-      </div>
-    </div>`;
-  content.innerHTML += heroHtml;
-
-  // Animate ring
-  setTimeout(() => {
-    const ring = document.getElementById('partnerRing');
-    if (ring && cycleDay && predictions) {
-      const progress = Math.min(cycleDay / predictions.avgCycle, 1);
-      ring.style.strokeDashoffset = 377 - (377 * progress);
-      ring.style.stroke = phaseConf.color;
-      ring.style.transition = 'stroke-dashoffset 1s ease-out';
-    }
-  }, 100);
-
-  // Tip card
-  if (phaseConf.tip) {
-    content.innerHTML += `
-      <div class="tip-card">
-        <div class="tip-emoji">${phaseConf.tipEmoji}</div>
-        <div class="tip-title">Tip pro tebe</div>
-        <div class="tip-text">${phaseConf.tip}</div>
-      </div>`;
-  }
-
-  // Predictions
-  if (privacy.predictions && predictions) {
-    const nextP = parseDate(predictions.nextPeriod);
-    const today = new Date(); today.setHours(0,0,0,0);
-    const daysUntil = Math.ceil((nextP - today) / (1000*60*60*24));
-
-    let predHtml = `<div class="card"><h3 style="font-size:16px;margin-bottom:12px">🔮 Predikce</h3>`;
-    predHtml += `<div class="info-row">
-      <span class="info-label">📅 Další menstruace</span>
-      <span class="info-value">${daysUntil > 0 ? 'za ' + daysUntil + ' dní' : daysUntil === 0 ? 'Dnes' : 'Probíhá'}</span>
-    </div>`;
-    predHtml += `<div class="info-row">
-      <span class="info-label">📊 Pravděpodobnost</span>
-      <span class="confidence-badge">${predictions.confidence}%</span>
-    </div>`;
-    predHtml += `<div class="info-row">
-      <span class="info-label">📏 Průměrný cyklus</span>
-      <span class="info-value">${predictions.avgCycle} dní</span>
-    </div>`;
-    predHtml += `</div>`;
-    content.innerHTML += predHtml;
-  }
-
-  // Period status
-  if (privacy.period) {
-    const isPeriod = phase.name === 'Menstruace';
-    content.innerHTML += `
-      <div class="card">
-        <div class="info-row">
-          <span class="info-label">🔴 Menstruace</span>
-          <span class="info-value" style="color:${isPeriod ? 'var(--period)' : 'var(--fertile)'}">${isPeriod ? 'Probíhá' : 'Neprobíhá'}</span>
-        </div>
-      </div>`;
-  }
-
-  // Fertile days
-  if (privacy.fertileDays && predictions) {
-    const fs = parseDate(predictions.fertileStart);
-    const fe = parseDate(predictions.fertileEnd);
-    const ov = parseDate(predictions.ovulationDate);
-    const today = new Date(); today.setHours(0,0,0,0);
-    const todayMs = today.getTime();
-    const isFertileNow = todayMs >= fs.getTime() && todayMs <= fe.getTime();
-
-    let fertileHtml = `<div class="card">
-      <h3 style="font-size:16px;margin-bottom:12px">🟢 Plodné okno</h3>
-      <div class="info-row">
-        <span class="info-label">Plodné dny</span>
-        <span class="info-value">${fs.getDate()}.${fs.getMonth()+1}. – ${fe.getDate()}.${fe.getMonth()+1}.</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">Ovulace</span>
-        <span class="info-value">${ov.getDate()}.${ov.getMonth()+1}.</span>
-      </div>`;
-
-    if (isFertileNow) {
-      fertileHtml += `<div style="text-align:center;padding:12px;margin-top:8px;background:var(--fertile-light);border-radius:var(--radius-sm)">
-        <span style="font-size:16px;font-weight:700;color:var(--ovulation)">🟢 Právě probíhá plodné okno!</span>
-      </div>`;
-    }
-
-    // Mini calendar showing 10 days around fertile window
-    fertileHtml += `<div class="mini-cal">`;
-    for (let i = -3; i <= 8; i++) {
-      const d = new Date(fs);
-      d.setDate(d.getDate() + i);
-      const dStr = fmtDate(d);
-      let cls = '';
-      if (d.getTime() === ov.getTime()) cls = 'ovulation';
-      else if (d.getTime() >= fs.getTime() && d.getTime() <= fe.getTime()) cls = 'fertile';
-      if (fmtDate(today) === dStr) cls += ' today';
-      fertileHtml += `<div class="mini-cal-day ${cls}">${d.getDate()}</div>`;
-    }
-    fertileHtml += `</div></div>`;
-    content.innerHTML += fertileHtml;
-  }
-
-  // Moods
-  if (privacy.moods && data.dayData) {
-    const todayStr = fmtDate(new Date());
-    const todayData = data.dayData[todayStr];
-    const moods = todayData?.symptoms || [];
-    const moodSymptoms = moods.filter(s => ['good_mood','bad_mood','irritable','crying'].includes(s));
-    const moodEmojis = moodSymptoms.map(m => {
-      const sym = SYMPTOMS.find(s => s.id === m);
-      return sym ? sym.emoji : '';
-    }).join(' ');
-
-    content.innerHTML += `
-      <div class="card">
-        <h3 style="font-size:16px;margin-bottom:8px">💭 Nálada dnes</h3>
-        <div class="mood-section">
-          ${moodEmojis ? `<div class="mood-emojis">${moodEmojis}</div>` : ''}
-          <div class="mood-label">${moodEmojis ? moodSymptoms.map(m => SYMPTOMS.find(s=>s.id===m)?.label).join(', ') : 'Zatím nezaznamenáno'}</div>
-        </div>
-      </div>`;
-  }
-
-  // Symptoms
-  if (privacy.symptoms && data.dayData) {
-    const todayStr = fmtDate(new Date());
-    const todayData = data.dayData[todayStr];
-    const symptoms = todayData?.symptoms || [];
-    if (symptoms.length > 0) {
-      const symHtml = symptoms.map(s => {
-        const sym = SYMPTOMS.find(x => x.id === s);
-        return sym ? `<span style="display:inline-block;padding:6px 12px;background:var(--gray-light);border-radius:20px;font-size:13px;margin:3px">${sym.emoji} ${sym.label}</span>` : '';
-      }).join('');
-      content.innerHTML += `
-        <div class="card">
-          <h3 style="font-size:16px;margin-bottom:12px">🩺 Symptomy dnes</h3>
-          <div style="display:flex;flex-wrap:wrap;gap:4px">${symHtml}</div>
-        </div>`;
-    }
-  }
-
-  // Conception mode info
-  if (data.settings?.conceptionMode && privacy.fertileDays) {
-    content.innerHTML += `
-      <div class="card" style="background:linear-gradient(135deg, var(--fertile-light), #E8F5E9)">
-        <h3 style="font-size:16px;color:var(--ovulation);margin-bottom:8px">🤰 Režim početí aktivní</h3>
-        <p style="font-size:13px;color:var(--dark-secondary);line-height:1.5">
-          Partnerka sleduje plodnost. Plodné dny a ovulace jsou zobrazeny výše.
-        </p>
-      </div>`;
+function submitCode() {
+  const code = document.getElementById('codeInput').value.trim().toUpperCase();
+  if (code.length >= 4) {
+    partnerCode = code;
+    window.history.replaceState(null, '', '?code=' + code);
+    loadPartnerData(code);
   }
 }
 
