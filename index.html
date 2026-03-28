@@ -1091,12 +1091,19 @@ body {
         <div class="setting-group">
           <div class="setting-group-title">O mně</div>
           <div class="setting-item">
+            <label>Email</label>
+            <span id="profileEmail" style="font-size:14px;color:var(--gray)"></span>
+          </div>
+          <div class="setting-item">
             <label>Jméno</label>
             <input type="text" class="setting-select" id="userName" placeholder="Tvoje jméno" onchange="saveSettings()" style="text-align:right;border:none;background:transparent;font-size:14px;color:var(--text)">
           </div>
           <div class="setting-item">
             <label>Věk</label>
             <input type="number" class="setting-select" id="userAge" placeholder="25" min="12" max="60" onchange="saveSettings()" style="text-align:right;border:none;background:transparent;font-size:14px;color:var(--text);width:60px">
+          </div>
+          <div class="setting-item" style="border-top:1px solid var(--border);margin-top:8px;padding-top:16px">
+            <button onclick="logout()" style="width:100%;padding:12px;background:none;border:1px solid #e55;color:#e55;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Odhlasit se</button>
           </div>
         </div>
 
@@ -2595,6 +2602,8 @@ async function handleAuth(e) {
     const data = await resp.json();
     if (data.ok) {
       document.getElementById('authOverlay').style.display = 'none';
+      document.getElementById('profileEmail').textContent = data.email || '';
+      if (data.csrfToken) window._csrf = data.csrfToken;
       loadFromServer();
     } else {
       errEl.textContent = data.error;
@@ -2612,6 +2621,8 @@ async function checkAuth() {
     const data = await resp.json();
     if (data.loggedIn) {
       document.getElementById('authOverlay').style.display = 'none';
+      document.getElementById('profileEmail').textContent = data.email || '';
+      if (data.csrfToken) window._csrf = data.csrfToken;
       loadFromServer();
     } else {
       document.getElementById('authOverlay').style.display = 'flex';
@@ -2649,12 +2660,22 @@ async function loadFromServer() {
 
 async function syncToServer() {
   try {
+    const headers = { 'Content-Type': 'application/json' };
+    if (window._csrf) headers['X-CSRF-Token'] = window._csrf;
     await fetch('/api/data', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ settings, dayData, notifications })
     });
   } catch (e) {}
+}
+
+async function logout() {
+  try {
+    await fetch('/api/logout', { method: 'POST' });
+  } catch (e) {}
+  localStorage.clear();
+  window.location.reload();
 }
 
 // ========== START ==========
