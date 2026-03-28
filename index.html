@@ -1639,20 +1639,25 @@ function renderCalendar() {
     const dd = dayData[dateStr];
     if (dd && dd.period) {
       el.classList.add('period-day');
-    } else if (predictions) {
+    } else if (predictions && predictions.allCycles) {
       const dateMs = date.getTime();
-      if (predictions.ovulationDate && fmtDate(new Date(predictions.ovulationDate)) === dateStr) {
-        el.classList.add('ovulation-day');
-      } else if (predictions.fertileStart && predictions.fertileEnd) {
-        const fs = new Date(predictions.fertileStart).getTime();
-        const fe = new Date(predictions.fertileEnd).getTime();
-        if (dateMs >= fs && dateMs <= fe) el.classList.add('fertile-day');
+      for (const cycle of predictions.allCycles) {
+        if (cycle.ovulationDate && fmtDate(new Date(cycle.ovulationDate)) === dateStr) {
+          el.classList.add('ovulation-day'); break;
+        }
+        if (cycle.fertileStart && cycle.fertileEnd) {
+          const fs = new Date(cycle.fertileStart).getTime();
+          const fe = new Date(cycle.fertileEnd).getTime();
+          if (dateMs >= fs && dateMs <= fe) { el.classList.add('fertile-day'); break; }
+        }
       }
-      if (predictions.pmsStart && predictions.pmsEnd) {
-        const ps = new Date(predictions.pmsStart).getTime();
-        const pe = new Date(predictions.pmsEnd).getTime();
-        if (dateMs >= ps && dateMs <= pe && !el.classList.contains('fertile-day') && !el.classList.contains('ovulation-day')) {
-          el.classList.add('pms-day');
+      for (const cycle of predictions.allCycles) {
+        if (cycle.pmsStart && cycle.pmsEnd) {
+          const ps = new Date(cycle.pmsStart).getTime();
+          const pe = new Date(cycle.pmsEnd).getTime();
+          if (dateMs >= ps && dateMs <= pe && !el.classList.contains('fertile-day') && !el.classList.contains('ovulation-day')) {
+            el.classList.add('pms-day'); break;
+          }
         }
       }
     }
@@ -1737,30 +1742,41 @@ function getPredictions() {
 
   if (starts.length === 0) return null;
 
-  const lastStart = parseDate(starts[starts.length - 1]);
   const avgCycle = Math.round(getWeightedAverage(lengths.length > 0 ? lengths : [settings.cycleLength]));
   const trend = detectTrend(lengths);
   const adjustedCycle = Math.round(avgCycle + trend * 0.3);
   const effectiveCycle = Math.max(21, Math.min(40, adjustedCycle));
-
   const luteal = settings.lutealPhase;
   const ovulationDay = effectiveCycle - luteal;
 
+  // Generate predictions for ALL recorded cycles + 2 future
+  const allCycles = [];
+  for (let i = 0; i < starts.length; i++) {
+    const cycleStart = parseDate(starts[i]);
+    const ov = new Date(cycleStart); ov.setDate(ov.getDate() + ovulationDay);
+    const fs = new Date(ov); fs.setDate(fs.getDate() - 5);
+    const fe = new Date(ov); fe.setDate(fe.getDate() + 1);
+    const np = new Date(cycleStart); np.setDate(np.getDate() + effectiveCycle);
+    const ps = new Date(np); ps.setDate(ps.getDate() - 5);
+    const pe = new Date(np); pe.setDate(pe.getDate() - 1);
+    allCycles.push({ ovulationDate: fmtDate(ov), fertileStart: fmtDate(fs), fertileEnd: fmtDate(fe), pmsStart: fmtDate(ps), pmsEnd: fmtDate(pe) });
+  }
+
+  // Add 2 future predictions from last start
+  const lastStart = parseDate(starts[starts.length - 1]);
+  for (let f = 1; f <= 2; f++) {
+    const futureStart = new Date(lastStart); futureStart.setDate(futureStart.getDate() + effectiveCycle * f);
+    const ov = new Date(futureStart); ov.setDate(ov.getDate() + ovulationDay);
+    const fs = new Date(ov); fs.setDate(fs.getDate() - 5);
+    const fe = new Date(ov); fe.setDate(fe.getDate() + 1);
+    const np = new Date(futureStart); np.setDate(np.getDate() + effectiveCycle);
+    const ps = new Date(np); ps.setDate(ps.getDate() - 5);
+    const pe = new Date(np); pe.setDate(pe.getDate() - 1);
+    allCycles.push({ ovulationDate: fmtDate(ov), fertileStart: fmtDate(fs), fertileEnd: fmtDate(fe), pmsStart: fmtDate(ps), pmsEnd: fmtDate(pe) });
+  }
+
   const nextPeriod = new Date(lastStart);
   nextPeriod.setDate(nextPeriod.getDate() + effectiveCycle);
-
-  const ovulationDate = new Date(lastStart);
-  ovulationDate.setDate(ovulationDate.getDate() + ovulationDay);
-
-  const fertileStart = new Date(ovulationDate);
-  fertileStart.setDate(fertileStart.getDate() - 5);
-  const fertileEnd = new Date(ovulationDate);
-  fertileEnd.setDate(fertileEnd.getDate() + 1);
-
-  const pmsStart = new Date(nextPeriod);
-  pmsStart.setDate(pmsStart.getDate() - 5);
-  const pmsEnd = new Date(nextPeriod);
-  pmsEnd.setDate(pmsEnd.getDate() - 1);
 
   // Average period length
   const periodLengths = [];
@@ -1775,13 +1791,17 @@ function getPredictions() {
     if (len > 0) periodLengths.push(len);
   }
 
+  // Use last cycle for main prediction display
+  const lastCycle = allCycles[starts.length - 1] || allCycles[0];
+
   return {
     nextPeriod: fmtDate(nextPeriod),
-    ovulationDate: fmtDate(ovulationDate),
-    fertileStart: fmtDate(fertileStart),
-    fertileEnd: fmtDate(fertileEnd),
-    pmsStart: fmtDate(pmsStart),
-    pmsEnd: fmtDate(pmsEnd),
+    ovulationDate: lastCycle.ovulationDate,
+    fertileStart: lastCycle.fertileStart,
+    fertileEnd: lastCycle.fertileEnd,
+    pmsStart: lastCycle.pmsStart,
+    pmsEnd: lastCycle.pmsEnd,
+    allCycles: allCycles,
     avgCycle: effectiveCycle,
     avgPeriod: periodLengths.length > 0 ? Math.round(periodLengths.reduce((a,b)=>a+b,0)/periodLengths.length) : settings.periodLength,
     confidence: getConfidence(),
