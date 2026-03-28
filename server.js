@@ -5,6 +5,27 @@ const bcrypt = require('bcryptjs');
 const { Pool } = require('pg');
 const path = require('path');
 const crypto = require('crypto');
+const nodemailer = require('nodemailer');
+
+// Email
+const transporter = nodemailer.createTransport({
+  host: 'smtp.gmail.com', port: 587, secure: false,
+  auth: { user: 'honza@hofo.cz', pass: process.env.SMTP_PASS || 'mulc wgap kgof ynkz' }
+});
+
+async function sendVerifyEmail(to, code) {
+  await transporter.sendMail({
+    from: '"MůjCyklus" <honza@hofo.cz>',
+    to,
+    subject: 'Ověření účtu - MůjCyklus',
+    html: `<div style="font-family:sans-serif;max-width:400px;margin:0 auto;padding:32px;text-align:center">
+      <h2 style="color:#E8577D">MůjCyklus</h2>
+      <p>Tvůj ověřovací kód:</p>
+      <div style="font-size:32px;font-weight:bold;letter-spacing:8px;padding:20px;background:#f5f5f5;border-radius:8px;margin:20px 0">${code}</div>
+      <p style="color:#888;font-size:13px">Kód platí 15 minut. Pokud jsi se neregistrovala, ignoruj tento email.</p>
+    </div>`
+  });
+}
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -119,28 +140,54 @@ function requireAuth(req, res, next) {
   res.status(401).json({ error: 'Prihlaste se' });
 }
 
-// Register
+// Register - step 1: send verification code
 app.post('/api/register', checkRateLimit, async (req, res) => {
   try {
     const { email, password, name } = req.body;
-    if (!email || !password) return res.status(400).json({ error: 'Email a heslo jsou povinne' });
-    if (password.length < 6) return res.status(400).json({ error: 'Heslo musi mit alespon 6 znaku' });
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Neplatny email' });
+    if (!email || !password) return res.status(400).json({ error: 'Email a heslo jsou povinné' });
+    if (password.length < 6) return res.status(400).json({ error: 'Heslo musí mít alespoň 6 znaků' });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Neplatný email' });
 
     const existing = await pool.query('SELECT id FROM mc_users WHERE email = $1', [email.toLowerCase()]);
-    if (existing.rows.length > 0) return res.status(400).json({ error: 'Tento email je jiz registrovan' });
+    if (existing.rows.length > 0) return res.status(400).json({ error: 'Tento email je již registrován' });
 
-    const hash = await bcrypt.hash(password, 12);
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    req.session.pendingReg = { email: email.toLowerCase(), password, name, code, expires: Date.now() + 15 * 60 * 1000 };
+
+    try {
+      await sendVerifyEmail(email, code);
+    } catch (emailErr) {
+      console.error('Email error:', emailErr);
+      return res.status(500).json({ error: 'Nepodařilo se odeslat ověřovací email' });
+    }
+
+    res.json({ ok: true, needsVerify: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Chyba serveru' });
+  }
+});
+
+// Register - step 2: verify code
+app.post('/api/verify', async (req, res) => {
+  try {
+    const { code } = req.body;
+    const pending = req.session.pendingReg;
+    if (!pending) return res.status(400).json({ error: 'Nejdřív se zaregistrujte' });
+    if (Date.now() > pending.expires) { delete req.session.pendingReg; return res.status(400).json({ error: 'Kód vypršel. Zaregistrujte se znovu.' }); }
+    if (code !== pending.code) return res.status(400).json({ error: 'Špatný kód' });
+
+    const hash = await bcrypt.hash(pending.password, 12);
     const result = await pool.query(
       'INSERT INTO mc_users (email, password, name) VALUES ($1, $2, $3) RETURNING id',
-      [email.toLowerCase(), hash, name || null]
+      [pending.email, hash, pending.name || null]
     );
-
     await pool.query('INSERT INTO mc_user_data (user_id) VALUES ($1)', [result.rows[0].id]);
 
     req.session.userId = result.rows[0].id;
-    req.session.email = email.toLowerCase();
-    res.json({ ok: true, email: email.toLowerCase(), csrfToken: req.session.csrfToken });
+    req.session.email = pending.email;
+    delete req.session.pendingReg;
+    res.json({ ok: true, email: pending.email, csrfToken: req.session.csrfToken });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Chyba serveru' });

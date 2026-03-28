@@ -2629,6 +2629,10 @@ async function handleAuth(e) {
       body: JSON.stringify(body)
     });
     const data = await resp.json();
+    if (data.ok && data.needsVerify) {
+      showVerifyCode();
+      return;
+    }
     if (data.ok) {
       document.getElementById('authOverlay').style.display = 'none';
       document.getElementById('profileEmail').textContent = data.email || '';
@@ -2640,6 +2644,46 @@ async function handleAuth(e) {
     }
   } catch (err) {
     errEl.textContent = 'Chyba spojení se serverem';
+    errEl.style.display = 'block';
+  }
+}
+
+function showVerifyCode() {
+  document.getElementById('authForm').style.display = 'none';
+  document.getElementById('authSubtitle').textContent = 'Zadej 6místný kód z emailu';
+  document.getElementById('authError').style.display = 'none';
+  var d = document.createElement('div');
+  d.id = 'verifyDiv';
+  d.innerHTML = '<div id="verifyError" style="display:none;background:#fee;color:#c00;padding:10px;border-radius:8px;font-size:13px;margin-bottom:16px;text-align:center"></div>' +
+    '<form onsubmit="handleVerify(event)">' +
+    '<input type="text" id="verifyCode" placeholder="123456" maxlength="6" pattern="[0-9]{6}" required style="width:100%;padding:16px;border:1px solid #e0e0e0;border-radius:8px;font-size:24px;font-family:inherit;text-align:center;letter-spacing:8px;outline:none;margin-bottom:12px">' +
+    '<button type="submit" style="width:100%;padding:14px;background:#E8577D;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">Ověřit</button>' +
+    '</form>';
+  document.getElementById('authForm').parentElement.appendChild(d);
+}
+
+async function handleVerify(e) {
+  e.preventDefault();
+  var code = document.getElementById('verifyCode').value;
+  var errEl = document.getElementById('verifyError');
+  try {
+    var resp = await fetch('/api/verify', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({code: code})
+    });
+    var data = await resp.json();
+    if (data.ok) {
+      document.getElementById('authOverlay').style.display = 'none';
+      document.getElementById('profileEmail').textContent = data.email || '';
+      if (data.csrfToken) window._csrf = data.csrfToken;
+      loadFromServer();
+    } else {
+      errEl.textContent = data.error;
+      errEl.style.display = 'block';
+    }
+  } catch(err) {
+    errEl.textContent = 'Chyba spojení';
     errEl.style.display = 'block';
   }
 }
