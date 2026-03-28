@@ -932,6 +932,33 @@ body {
 </style>
 </head>
 <body>
+<!-- AUTH OVERLAY -->
+<div id="authOverlay" style="display:none;position:fixed;inset:0;background:linear-gradient(135deg,#FFE4EC,#E8E0FF);z-index:10000;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:16px;padding:40px;max-width:380px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.1)">
+    <div style="text-align:center;margin-bottom:24px">
+      <div style="font-size:28px;font-weight:800;color:#1a1a2e;margin-bottom:4px">MůjCyklus</div>
+      <p style="color:#888;font-size:14px" id="authSubtitle">Přihlaste se ke svému účtu</p>
+    </div>
+    <div id="authError" style="display:none;background:#fee;color:#c00;padding:10px;border-radius:8px;font-size:13px;margin-bottom:16px;text-align:center"></div>
+    <form id="authForm" onsubmit="handleAuth(event)">
+      <div id="authNameField" style="display:none;margin-bottom:12px">
+        <input type="text" id="authName" placeholder="Jméno" style="width:100%;padding:12px 16px;border:1px solid #e0e0e0;border-radius:8px;font-size:14px;font-family:inherit;outline:none">
+      </div>
+      <div style="margin-bottom:12px">
+        <input type="email" id="authEmail" placeholder="Email" required style="width:100%;padding:12px 16px;border:1px solid #e0e0e0;border-radius:8px;font-size:14px;font-family:inherit;outline:none">
+      </div>
+      <div style="margin-bottom:12px">
+        <input type="password" id="authPassword" placeholder="Heslo" required minlength="6" style="width:100%;padding:12px 16px;border:1px solid #e0e0e0;border-radius:8px;font-size:14px;font-family:inherit;outline:none">
+      </div>
+      <button type="submit" id="authBtn" style="width:100%;padding:14px;background:#E8577D;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">Přihlásit se</button>
+    </form>
+    <p style="text-align:center;margin-top:16px;font-size:13px;color:#888">
+      <span id="authToggleText">Nemáte účet?</span>
+      <a href="#" onclick="toggleAuthMode();return false" style="color:#E8577D;font-weight:600" id="authToggleLink">Zaregistrovat se</a>
+    </p>
+  </div>
+</div>
+
 <div id="app">
   <!-- Header -->
   <div class="header">
@@ -1352,6 +1379,7 @@ let notifications = [];
 
 // ========== INIT ==========
 function init() {
+  checkAuth();
   loadData();
   ensureDemoData();
   generateNotifications();
@@ -1396,6 +1424,7 @@ function saveData() {
   localStorage.setItem('mujcyklus_notifs', JSON.stringify(notifications));
   // Also save partner-accessible data
   savePartnerData();
+  syncToServer();
 }
 
 function saveSettings() {
@@ -2534,6 +2563,98 @@ function deleteAllData() {
       location.reload();
     }
   }
+}
+
+// ========== AUTH ==========
+let authMode = 'login';
+function toggleAuthMode() {
+  authMode = authMode === 'login' ? 'register' : 'login';
+  document.getElementById('authSubtitle').textContent = authMode === 'login' ? 'Přihlaste se ke svému účtu' : 'Vytvořte si nový účet';
+  document.getElementById('authBtn').textContent = authMode === 'login' ? 'Přihlásit se' : 'Zaregistrovat se';
+  document.getElementById('authToggleText').textContent = authMode === 'login' ? 'Nemáte účet?' : 'Už máte účet?';
+  document.getElementById('authToggleLink').textContent = authMode === 'login' ? 'Zaregistrovat se' : 'Přihlásit se';
+  document.getElementById('authNameField').style.display = authMode === 'register' ? 'block' : 'none';
+  document.getElementById('authError').style.display = 'none';
+}
+
+async function handleAuth(e) {
+  e.preventDefault();
+  const email = document.getElementById('authEmail').value;
+  const password = document.getElementById('authPassword').value;
+  const name = document.getElementById('authName').value;
+  const errEl = document.getElementById('authError');
+
+  try {
+    const url = authMode === 'login' ? '/api/login' : '/api/register';
+    const body = authMode === 'login' ? { email, password } : { email, password, name };
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      document.getElementById('authOverlay').style.display = 'none';
+      loadFromServer();
+    } else {
+      errEl.textContent = data.error;
+      errEl.style.display = 'block';
+    }
+  } catch (err) {
+    errEl.textContent = 'Chyba spojení se serverem';
+    errEl.style.display = 'block';
+  }
+}
+
+async function checkAuth() {
+  try {
+    const resp = await fetch('/api/me');
+    const data = await resp.json();
+    if (data.loggedIn) {
+      document.getElementById('authOverlay').style.display = 'none';
+      loadFromServer();
+    } else {
+      document.getElementById('authOverlay').style.display = 'flex';
+    }
+  } catch (e) {
+    // Offline - use localStorage
+    document.getElementById('authOverlay').style.display = 'none';
+  }
+}
+
+async function loadFromServer() {
+  try {
+    const resp = await fetch('/api/data');
+    const data = await resp.json();
+    if (data.settings && Object.keys(data.settings).length > 0) {
+      settings = { ...settings, ...data.settings };
+    }
+    if (data.dayData && Object.keys(data.dayData).length > 0) {
+      dayData = data.dayData;
+    }
+    if (data.notifications && data.notifications.length > 0) {
+      notifications = data.notifications;
+    }
+    // Re-render everything
+    renderCalendar();
+    renderSymptoms();
+    updateStats();
+    updatePartnerTab();
+    applyDarkMode();
+    applyContraceptionUI();
+    if (settings.userName) document.getElementById('userName').value = settings.userName;
+    if (settings.userAge) document.getElementById('userAge').value = settings.userAge;
+  } catch (e) {}
+}
+
+async function syncToServer() {
+  try {
+    await fetch('/api/data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ settings, dayData, notifications })
+    });
+  } catch (e) {}
 }
 
 // ========== START ==========

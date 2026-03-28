@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MujCyklus - Menstruacni kalendar</title>
+    <meta name="description" content="Jednoduchy a krasny menstruacni kalendar. Sleduj svuj cyklus, plodne dny a nalady. Vse v bezpeci.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --pink: #FFE4EC;
+            --lavender: #E8E0FF;
+            --rose: #E8577D;
+            --rose-dark: #D14468;
+            --rose-light: #FFF0F3;
+            --text: #2D2D3A;
+            --text-light: #6B6B80;
+            --white: #FFFFFF;
+            --radius: 14px;
+            --shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.08);
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+            background: var(--white);
+        }
+
+        .container {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* NAV */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(232, 87, 125, 0.08);
+            padding: 16px 0;
+        }
+
+        nav .container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--rose);
+            text-decoration: none;
+            letter-spacing: -0.5px;
+        }
+
+        .logo span {
+            color: var(--text);
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--text-light);
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--rose);
+        }
+
+        .nav-cta {
+            background: var(--rose);
+            color: var(--white) !important;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: 600 !important;
+            transition: background 0.2s, transform 0.2s !important;
+        }
+
+        .nav-cta:hover {
+            background: var(--rose-dark);
+            transform: translateY(-1px);
+        }
+
+        /* HERO */
+        .hero {
+            padding: 140px 0 80px;
+            background: linear-gradient(135deg, var(--pink) 0%, var(--lavender) 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(232, 87, 125, 0.08) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+
+        .hero .container {
+            display: flex;
+            align-items: center;
+            gap: 60px;
+        }
+
+        .hero-content {
+            flex: 1;
+            max-width: 520px;
+        }
+
+        .hero h1 {
+            font-size: 48px;
+            font-weight: 800;
+            line-height: 1.15;
+            letter-spacing: -1.5px;
+            margin-bottom: 20px;
+            color: var(--text);
+        }
+
+        .hero h1 span {
+            color: var(--rose);
+        }
+
+        .hero p {
+            font-size: 18px;
+            color: var(--text-light);
+            line-height: 1.7;
+            margin-bottom: 36px;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--rose);
+            color: var(--white);
+            padding: 16px 32px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 16px;
+            transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 16px rgba(232, 87, 125, 0.3);
+        }
+
+        .btn-primary:hover {
+            background: var(--rose-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(232, 87, 125, 0.4);
+        }
+
+        .btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--white);
+            color: var(--text);
+            padding: 16px 32px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 16px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: var(--shadow);
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        /* Phone mockup */
+        .hero-visual {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            position: relative;
+        }
+
+        .phone-frame {
+            width: 280px;
+            height: 560px;
+            background: #1a1a2e;
+            border-radius: 40px;
+            padding: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15), inset 0 0 0 2px rgba(255, 255, 255, 0.1);
+            position: relative;
+        }
+
+        .phone-notch {
+            position: absolute;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 28px;
+            background: #1a1a2e;
+            border-radius: 0 0 16px 16px;
+            z-index: 2;
+        }
+
+        .phone-screen {
+            width: 100%;
+            height: 100%;
+            border-radius: 30px;
+            overflow: hidden;
+            background: linear-gradient(180deg, #FFF5F7 0%, #FFF 30%);
+            position: relative;
+        }
+
+        .phone-screen-content {
+            padding: 44px 16px 16px;
+        }
+
+        .phone-header {
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        .phone-header-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .phone-header-sub {
+            font-size: 10px;
+            color: var(--text-light);
+            margin-top: 2px;
+        }
+
+        .phone-calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+            margin-bottom: 16px;
+        }
+
+        .phone-day-label {
+            text-align: center;
+            font-size: 8px;
+            font-weight: 600;
+            color: var(--text-light);
+            padding: 4px 0;
+        }
+
+        .phone-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 500;
+            border-radius: 50%;
+            color: var(--text);
+        }
+
+        .phone-day.period {
+            background: #FECDD3;
+            color: var(--rose);
+            font-weight: 600;
+        }
+
+        .phone-day.fertile {
+            background: #DBEAFE;
+            color: #3B82F6;
+        }
+
+        .phone-day.ovulation {
+            background: #A78BFA;
+            color: white;
+            font-weight: 700;
+        }
+
+        .phone-day.today {
+            border: 2px solid var(--rose);
+            font-weight: 700;
+        }
+
+        .phone-day.empty {
+            color: transparent;
+        }
+
+        .phone-info-card {
+            background: white;
+            border-radius: 12px;
+            padding: 10px 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            margin-bottom: 8px;
+        }
+
+        .phone-info-label {
+            font-size: 8px;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .phone-info-value {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--rose);
+            margin-top: 2px;
+        }
+
+        /* FEATURES */
+        .features {
+            padding: 100px 0;
+            background: var(--white);
+        }
+
+        .section-label {
+            display: inline-block;
+            background: var(--rose-light);
+            color: var(--rose);
+            font-size: 13px;
+            font-weight: 600;
+            padding: 6px 16px;
+            border-radius: 20px;
+            margin-bottom: 16px;
+        }
+
+        .section-title {
+            font-size: 40px;
+            font-weight: 800;
+            letter-spacing: -1px;
+            margin-bottom: 16px;
+            line-height: 1.2;
+        }
+
+        .section-subtitle {
+            font-size: 18px;
+            color: var(--text-light);
+            max-width: 540px;
+            margin-bottom: 56px;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+
+        .feature-card {
+            background: var(--white);
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            border-radius: var(--radius);
+            padding: 32px 28px;
+            transition: transform 0.25s, box-shadow 0.25s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .feature-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .feature-icon svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        .feature-icon.pink { background: #FFE4EC; }
+        .feature-icon.blue { background: #DBEAFE; }
+        .feature-icon.purple { background: #EDE9FE; }
+        .feature-icon.green { background: #D1FAE5; }
+        .feature-icon.orange { background: #FFF3E0; }
+        .feature-icon.teal { background: #E0F7FA; }
+
+        .feature-card h3 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .feature-card p {
+            font-size: 14px;
+            color: var(--text-light);
+            line-height: 1.6;
+        }
+
+        /* HOW IT WORKS */
+        .how-it-works {
+            padding: 100px 0;
+            background: linear-gradient(180deg, #FAFAFA 0%, var(--white) 100%);
+        }
+
+        .steps {
+            display: flex;
+            gap: 32px;
+            margin-top: 56px;
+        }
+
+        .step {
+            flex: 1;
+            text-align: center;
+            position: relative;
+        }
+
+        .step-number {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--rose), #C74B6C);
+            color: var(--white);
+            font-size: 24px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            box-shadow: 0 4px 16px rgba(232, 87, 125, 0.3);
+        }
+
+        .step h3 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .step p {
+            font-size: 14px;
+            color: var(--text-light);
+            max-width: 260px;
+            margin: 0 auto;
+        }
+
+        .step-connector {
+            position: absolute;
+            top: 32px;
+            right: -16px;
+            width: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .step-connector svg {
+            color: #D4D4D4;
+        }
+
+        /* PRIVACY */
+        .privacy {
+            padding: 100px 0;
+            background: var(--white);
+        }
+
+        .privacy-content {
+            display: flex;
+            gap: 60px;
+            align-items: flex-start;
+        }
+
+        .privacy-text {
+            flex: 1;
+        }
+
+        .privacy-text > p {
+            font-size: 16px;
+            color: var(--text-light);
+            line-height: 1.7;
+            margin-bottom: 36px;
+        }
+
+        .privacy-points {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            flex: 1;
+        }
+
+        .privacy-point {
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+            background: #FAFAFA;
+            border-radius: var(--radius);
+            padding: 24px;
+        }
+
+        .privacy-point-icon {
+            width: 44px;
+            height: 44px;
+            min-width: 44px;
+            border-radius: 12px;
+            background: var(--rose-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .privacy-point-icon svg {
+            width: 20px;
+            height: 20px;
+            color: var(--rose);
+        }
+
+        .privacy-point h4 {
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .privacy-point p {
+            font-size: 13px;
+            color: var(--text-light);
+            line-height: 1.5;
+        }
+
+        /* CTA SECTION */
+        .cta-section {
+            padding: 100px 0;
+            background: linear-gradient(135deg, #2D2D3A 0%, #1a1a2e 50%, #2D2D3A 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(232, 87, 125, 0.15) 0%, rgba(167, 139, 250, 0.1) 100%);
+        }
+
+        .cta-content {
+            text-align: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        .cta-content h2 {
+            font-size: 40px;
+            font-weight: 800;
+            color: var(--white);
+            letter-spacing: -1px;
+            margin-bottom: 16px;
+        }
+
+        .cta-content p {
+            font-size: 18px;
+            color: rgba(255, 255, 255, 0.65);
+            margin-bottom: 40px;
+            max-width: 480px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .btn-cta-large {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--rose);
+            color: var(--white);
+            padding: 18px 40px;
+            border-radius: 14px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 18px;
+            transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 24px rgba(232, 87, 125, 0.4);
+        }
+
+        .btn-cta-large:hover {
+            background: var(--rose-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px rgba(232, 87, 125, 0.5);
+        }
+
+        /* FOOTER */
+        footer {
+            padding: 40px 0;
+            background: #FAFAFA;
+            border-top: 1px solid rgba(0, 0, 0, 0.06);
+        }
+
+        footer .container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        footer p {
+            font-size: 13px;
+            color: var(--text-light);
+        }
+
+        .footer-made {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: var(--text-light);
+        }
+
+        .footer-made svg {
+            width: 16px;
+            height: 16px;
+            color: var(--rose);
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+
+            .hero {
+                padding: 120px 0 60px;
+            }
+
+            .hero .container {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .hero h1 {
+                font-size: 36px;
+            }
+
+            .hero p {
+                font-size: 16px;
+            }
+
+            .hero-buttons {
+                justify-content: center;
+            }
+
+            .hero-visual {
+                margin-top: 40px;
+            }
+
+            .phone-frame {
+                width: 240px;
+                height: 480px;
+            }
+
+            .features-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 16px;
+            }
+
+            .section-title {
+                font-size: 32px;
+            }
+
+            .steps {
+                flex-direction: column;
+                gap: 40px;
+            }
+
+            .step-connector {
+                display: none;
+            }
+
+            .privacy-content {
+                flex-direction: column;
+                gap: 32px;
+            }
+
+            .cta-content h2 {
+                font-size: 32px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .hero h1 {
+                font-size: 30px;
+            }
+
+            .hero-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .btn-primary, .btn-secondary {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .section-title {
+                font-size: 28px;
+            }
+
+            .phone-frame {
+                width: 220px;
+                height: 440px;
+            }
+
+            footer .container {
+                flex-direction: column;
+                gap: 12px;
+                text-align: center;
+            }
+        }
+
+        /* ANIMATIONS */
+        @media (prefers-reduced-motion: no-preference) {
+            .feature-card,
+            .step,
+            .privacy-point {
+                opacity: 0;
+                transform: translateY(20px);
+                animation: fadeUp 0.5s ease forwards;
+            }
+
+            .feature-card:nth-child(1) { animation-delay: 0.05s; }
+            .feature-card:nth-child(2) { animation-delay: 0.1s; }
+            .feature-card:nth-child(3) { animation-delay: 0.15s; }
+            .feature-card:nth-child(4) { animation-delay: 0.2s; }
+            .feature-card:nth-child(5) { animation-delay: 0.25s; }
+            .feature-card:nth-child(6) { animation-delay: 0.3s; }
+
+            .step:nth-child(1) { animation-delay: 0.05s; }
+            .step:nth-child(2) { animation-delay: 0.15s; }
+            .step:nth-child(3) { animation-delay: 0.25s; }
+
+            .privacy-point:nth-child(1) { animation-delay: 0.05s; }
+            .privacy-point:nth-child(2) { animation-delay: 0.15s; }
+            .privacy-point:nth-child(3) { animation-delay: 0.25s; }
+
+            @keyframes fadeUp {
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- NAV -->
+    <nav>
+        <div class="container">
+            <a href="#" class="logo">Muj<span>Cyklus</span></a>
+            <ul class="nav-links">
+                <li><a href="#funkce">Funkce</a></li>
+                <li><a href="#jak-to-funguje">Jak to funguje</a></li>
+                <li><a href="#soukromi">Soukromi</a></li>
+                <li><a href="https://mujcyklus-preview.onrender.com" class="nav-cta">Spustit aplikaci</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- HERO -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <h1>Tvuj cyklus.<br><span>Tvoje pravidla.</span></h1>
+                <p>Jednoduchy a krasny menstruacni kalendar. Sleduj svuj cyklus, plodne dny a nalady. Sdilej s partnerem. Vse v bezpeci.</p>
+                <div class="hero-buttons">
+                    <a href="https://mujcyklus-preview.onrender.com" class="btn-primary">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        Vyzkouset zdarma
+                    </a>
+                    <a href="#funkce" class="btn-secondary">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                        Jak to funguje
+                    </a>
+                </div>
+            </div>
+            <div class="hero-visual">
+                <div class="phone-frame">
+                    <div class="phone-notch"></div>
+                    <div class="phone-screen">
+                        <div class="phone-screen-content">
+                            <div class="phone-header">
+                                <div class="phone-header-title">Brezen 2026</div>
+                                <div class="phone-header-sub">Den cyklu: 14</div>
+                            </div>
+                            <div class="phone-calendar">
+                                <div class="phone-day-label">Po</div>
+                                <div class="phone-day-label">Ut</div>
+                                <div class="phone-day-label">St</div>
+                                <div class="phone-day-label">Ct</div>
+                                <div class="phone-day-label">Pa</div>
+                                <div class="phone-day-label">So</div>
+                                <div class="phone-day-label">Ne</div>
+
+                                <div class="phone-day empty"></div>
+                                <div class="phone-day empty"></div>
+                                <div class="phone-day empty"></div>
+                                <div class="phone-day empty"></div>
+                                <div class="phone-day empty"></div>
+                                <div class="phone-day empty"></div>
+                                <div class="phone-day">1</div>
+
+                                <div class="phone-day period">2</div>
+                                <div class="phone-day period">3</div>
+                                <div class="phone-day period">4</div>
+                                <div class="phone-day period">5</div>
+                                <div class="phone-day period">6</div>
+                                <div class="phone-day">7</div>
+                                <div class="phone-day">8</div>
+
+                                <div class="phone-day">9</div>
+                                <div class="phone-day">10</div>
+                                <div class="phone-day">11</div>
+                                <div class="phone-day fertile">12</div>
+                                <div class="phone-day fertile">13</div>
+                                <div class="phone-day fertile">14</div>
+                                <div class="phone-day ovulation">15</div>
+
+                                <div class="phone-day fertile">16</div>
+                                <div class="phone-day">17</div>
+                                <div class="phone-day">18</div>
+                                <div class="phone-day">19</div>
+                                <div class="phone-day">20</div>
+                                <div class="phone-day">21</div>
+                                <div class="phone-day">22</div>
+
+                                <div class="phone-day">23</div>
+                                <div class="phone-day">24</div>
+                                <div class="phone-day">25</div>
+                                <div class="phone-day">26</div>
+                                <div class="phone-day">27</div>
+                                <div class="phone-day today">28</div>
+                                <div class="phone-day">29</div>
+
+                                <div class="phone-day">30</div>
+                                <div class="phone-day">31</div>
+                            </div>
+                            <div class="phone-info-card">
+                                <div class="phone-info-label">Dalsi menstruace</div>
+                                <div class="phone-info-value">za 14 dni</div>
+                            </div>
+                            <div class="phone-info-card">
+                                <div class="phone-info-label">Faze cyklu</div>
+                                <div class="phone-info-value">Ovulace</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FEATURES -->
+    <section class="features" id="funkce">
+        <div class="container">
+            <div class="section-label">Funkce</div>
+            <h2 class="section-title">Vse co potrebujes</h2>
+            <p class="section-subtitle">Kompletni nastroj pro sledovani cyklu, ktery respektuje tvoje soukromi.</p>
+            <div class="features-grid">
+                <!-- 1 -->
+                <div class="feature-card">
+                    <div class="feature-icon pink">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#E8577D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                            <line x1="16" y1="2" x2="16" y2="6"/>
+                            <line x1="8" y1="2" x2="8" y2="6"/>
+                            <line x1="3" y1="10" x2="21" y2="10"/>
+                        </svg>
+                    </div>
+                    <h3>Chytry kalendar</h3>
+                    <p>Predikce menstruace, plodnych dnu a ovulace. Staci zadat par udaju.</p>
+                </div>
+                <!-- 2 -->
+                <div class="feature-card">
+                    <div class="feature-icon blue">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                            <polyline points="10 9 9 9 8 9"/>
+                        </svg>
+                    </div>
+                    <h3>Sledovani symptomu</h3>
+                    <p>14 symptomu, bazalni teplota, nalady a poznamky na jednom miste.</p>
+                </div>
+                <!-- 3 -->
+                <div class="feature-card">
+                    <div class="feature-icon purple">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                        </svg>
+                    </div>
+                    <h3>Parovy mod</h3>
+                    <p>Sdilej vybrane informace s partnerem. Ty rozhodujes co uvidi.</p>
+                </div>
+                <!-- 4 -->
+                <div class="feature-card">
+                    <div class="feature-icon green">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+                            <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+                            <line x1="9" y1="9" x2="9.01" y2="9"/>
+                            <line x1="15" y1="9" x2="15.01" y2="9"/>
+                        </svg>
+                    </div>
+                    <h3>Rezim poceti</h3>
+                    <p>Planujes miminko? Specialni rezim s plodnymi dny a odpoctem do testu.</p>
+                </div>
+                <!-- 5 -->
+                <div class="feature-card">
+                    <div class="feature-icon orange">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="20" x2="18" y2="10"/>
+                            <line x1="12" y1="20" x2="12" y2="4"/>
+                            <line x1="6" y1="20" x2="6" y2="14"/>
+                        </svg>
+                    </div>
+                    <h3>Zdravotni prehledy</h3>
+                    <p>Grafy nalad, export pro lekare, upozorneni na nepravidelnosti.</p>
+                </div>
+                <!-- 6 -->
+                <div class="feature-card">
+                    <div class="feature-icon teal">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#0891B2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                    </div>
+                    <h3>Antikoncepce</h3>
+                    <p>Pripominky na pilulku, sledovani IUD a implantatu.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- HOW IT WORKS -->
+    <section class="how-it-works" id="jak-to-funguje">
+        <div class="container">
+            <div class="section-label">Jak na to</div>
+            <h2 class="section-title">3 jednoduche kroky</h2>
+            <p class="section-subtitle">Zacit sledovat cyklus je otazka par minut.</p>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <h3>Zadej zacatek menstruace</h3>
+                    <p>Staci kliknout na den v kalendari a oznacit prvni den menstruace.</p>
+                    <div class="step-connector">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <h3>Aplikace spocita tvuj cyklus</h3>
+                    <p>Na zaklade tvych dat se vypocita delka cyklu, plodne dny a predikce.</p>
+                    <div class="step-connector">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <h3>Sleduj predikce a zaznamenavej pocity</h3>
+                    <p>Pridavej symptomy, nalady a poznamky. Cim vice dat, tim presnejsi predikce.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PRIVACY -->
+    <section class="privacy" id="soukromi">
+        <div class="container">
+            <div class="section-label">Soukromi</div>
+            <h2 class="section-title">Tvoje data, tvoje soukromi</h2>
+            <div class="privacy-content">
+                <div class="privacy-text">
+                    <p>Vime, ze data o menstruacnim cyklu jsou velmi osobni. Proto jsme MujCyklus navrhli tak, aby tvoje data zustala jen u tebe. Zadne servery, zadna registrace, zadne sledovani.</p>
+                </div>
+                <div class="privacy-points">
+                    <div class="privacy-point">
+                        <div class="privacy-point-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h4>Data jen v prohlizeci</h4>
+                            <p>Vsechna data se ukladaji do localStorage tveho prohlizece. Nic se neodesila na zadny server.</p>
+                        </div>
+                    </div>
+                    <div class="privacy-point">
+                        <div class="privacy-point-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h4>Bez registrace</h4>
+                            <p>Nepotrebujes email, heslo ani ucet. Proste otevri aplikaci a zacni.</p>
+                        </div>
+                    </div>
+                    <div class="privacy-point">
+                        <div class="privacy-point-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"/>
+                                <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h4>Zadne sledovani</h4>
+                            <p>Zadna analytika, zadne cookies tretich stran, zadne reklamy. Tvoje soukromi je priorita.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta-section">
+        <div class="container">
+            <div class="cta-content">
+                <h2>Zacni sledovat svuj cyklus</h2>
+                <p>Zdarma, bez registrace, s respektem k tvemu soukromi.</p>
+                <a href="https://mujcyklus-preview.onrender.com" class="btn-cta-large">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    Otevrit MujCyklus
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+        <div class="container">
+            <p>MujCyklus 2026</p>
+            <div class="footer-made">
+                <span>Made with</span>
+                <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+                <span>care</span>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>
