@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#F48FB1">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#E8577D">
 <meta name="description" content="MůjCyklus - Chytrý tracker menstruačního cyklu">
-<link rel="manifest" href="manifest.json">
+<link rel="manifest" href="/manifest.json">
 <title>MůjCyklus</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -956,6 +956,29 @@ body {
       <span id="authToggleText">Nemáte účet?</span>
       <a href="#" onclick="toggleAuthMode();return false" style="color:#E8577D;font-weight:600" id="authToggleLink">Zaregistrovat se</a>
     </p>
+    <p id="forgotLink" style="text-align:center;margin-top:8px;font-size:13px">
+      <a href="#" onclick="showForgotPassword();return false" style="color:#888">Zapomenuté heslo?</a>
+    </p>
+    <div id="forgotForm" style="display:none">
+      <div style="text-align:center;margin-bottom:24px">
+        <div style="font-size:28px;font-weight:800;color:#1a1a2e;margin-bottom:4px">Reset hesla</div>
+        <p style="color:#888;font-size:14px">Zadejte email a nové heslo</p>
+      </div>
+      <div id="forgotError" style="display:none;background:#fee;color:#c00;padding:10px;border-radius:8px;font-size:13px;margin-bottom:16px;text-align:center"></div>
+      <div id="forgotSuccess" style="display:none;background:#efe;color:#070;padding:10px;border-radius:8px;font-size:13px;margin-bottom:16px;text-align:center"></div>
+      <form onsubmit="handleForgot(event)">
+        <div style="margin-bottom:12px">
+          <input type="email" id="forgotEmail" placeholder="Email" required style="width:100%;padding:12px 16px;border:1px solid #e0e0e0;border-radius:8px;font-size:14px;font-family:inherit;outline:none">
+        </div>
+        <div style="margin-bottom:12px">
+          <input type="password" id="forgotNewPassword" placeholder="Nové heslo (min. 6 znaků)" required minlength="6" style="width:100%;padding:12px 16px;border:1px solid #e0e0e0;border-radius:8px;font-size:14px;font-family:inherit;outline:none">
+        </div>
+        <button type="submit" style="width:100%;padding:14px;background:#E8577D;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">Změnit heslo</button>
+      </form>
+      <p style="text-align:center;margin-top:16px;font-size:13px">
+        <a href="#" onclick="hideForgotPassword();return false" style="color:#E8577D;font-weight:600">Zpět na přihlášení</a>
+      </p>
+    </div>
   </div>
 </div>
 
@@ -1104,6 +1127,12 @@ body {
           </div>
           <div class="setting-item" style="border-top:1px solid var(--border);margin-top:8px;padding-top:16px">
             <button onclick="logout()" style="width:100%;padding:12px;background:none;border:1px solid #e55;color:#e55;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Odhlasit se</button>
+          </div>
+          <div class="setting-item" style="margin-top:4px">
+            <button onclick="exportData()" style="width:100%;padding:12px;background:none;border:1px solid #E8577D;color:#E8577D;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">Exportovat data (JSON)</button>
+          </div>
+          <div class="setting-item" style="margin-top:8px">
+            <button onclick="deleteAccount()" style="width:100%;padding:12px;background:none;border:1px solid #ccc;color:#888;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">Smazat účet a data</button>
           </div>
         </div>
 
@@ -2676,6 +2705,79 @@ async function logout() {
   } catch (e) {}
   localStorage.clear();
   window.location.reload();
+}
+
+async function deleteAccount() {
+  if (!confirm('Opravdu chcete smazat účet? Všechna data budou nenávratně ztracena.')) return;
+  if (!confirm('Jste si jistí? Tuto akci nelze vrátit.')) return;
+  try {
+    const headers = {};
+    if (window._csrf) headers['X-CSRF-Token'] = window._csrf;
+    await fetch('/api/account', { method: 'DELETE', headers });
+    localStorage.clear();
+    window.location.reload();
+  } catch(e) {
+    alert('Chyba při mazání účtu');
+  }
+}
+
+async function exportData() {
+  try {
+    const resp = await fetch('/api/data');
+    const data = await resp.json();
+    const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'mujcyklus-export.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch(e) {
+    alert('Chyba při exportu');
+  }
+}
+
+function showForgotPassword() {
+  document.getElementById('authForm').parentElement.style.display = 'none';
+  document.querySelector('#authOverlay [id=authToggleText]').parentElement.style.display = 'none';
+  document.getElementById('forgotLink').style.display = 'none';
+  document.getElementById('forgotForm').style.display = 'block';
+}
+function hideForgotPassword() {
+  document.getElementById('authForm').parentElement.style.display = 'block';
+  document.querySelector('#authOverlay [id=authToggleText]').parentElement.style.display = 'block';
+  document.getElementById('forgotLink').style.display = 'block';
+  document.getElementById('forgotForm').style.display = 'none';
+}
+async function handleForgot(e) {
+  e.preventDefault();
+  const email = document.getElementById('forgotEmail').value;
+  const newPassword = document.getElementById('forgotNewPassword').value;
+  try {
+    const resp = await fetch('/api/reset-password', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({email, newPassword})
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      document.getElementById('forgotSuccess').textContent = 'Heslo změněno. Můžete se přihlásit.';
+      document.getElementById('forgotSuccess').style.display = 'block';
+      document.getElementById('forgotError').style.display = 'none';
+    } else {
+      document.getElementById('forgotError').textContent = data.error;
+      document.getElementById('forgotError').style.display = 'block';
+      document.getElementById('forgotSuccess').style.display = 'none';
+    }
+  } catch(err) {
+    document.getElementById('forgotError').textContent = 'Chyba spojení';
+    document.getElementById('forgotError').style.display = 'block';
+  }
+}
+
+// ========== SERVICE WORKER ==========
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
 }
 
 // ========== START ==========

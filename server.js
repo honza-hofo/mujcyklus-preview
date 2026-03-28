@@ -236,4 +236,35 @@ app.post('/api/reset-password', checkRateLimit, async (req, res) => {
   }
 });
 
+// Delete account (GDPR)
+app.delete('/api/account', requireAuth, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM mc_user_data WHERE user_id = $1', [req.session.userId]);
+    await pool.query('DELETE FROM mc_users WHERE id = $1', [req.session.userId]);
+    req.session.destroy();
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Chyba pri mazani uctu' });
+  }
+});
+
+// Export data (for doctor)
+app.get('/api/export', requireAuth, async (req, res) => {
+  try {
+    const user = await pool.query('SELECT email, name, age FROM mc_users WHERE id = $1', [req.session.userId]);
+    const data = await pool.query('SELECT settings, day_data FROM mc_user_data WHERE user_id = $1', [req.session.userId]);
+    res.json({
+      user: user.rows[0] || {},
+      data: data.rows[0] || {},
+      exportedAt: new Date().toISOString()
+    });
+  } catch (e) {
+    res.status(500).json({ error: 'Chyba pri exportu' });
+  }
+});
+
+// Landing = default, app = /app
+app.get('/app', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+app.get('/landing', (req, res) => res.sendFile(path.join(__dirname, 'landing.html')));
+
 app.listen(PORT, () => console.log(`MujCyklus server on port ${PORT}`));
