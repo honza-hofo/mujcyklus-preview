@@ -884,8 +884,9 @@ body {
 .tab-content::-webkit-scrollbar { width: 0; }
 
 /* Tab visibility */
-.tab-view { display: none; }
+.tab-view { display: none; animation: tabFadeIn 0.2s ease; }
 .tab-view.active { display: block; }
+@keyframes tabFadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
 
 /* Version footer */
 .version-text {
@@ -1117,6 +1118,12 @@ body {
         <h3 style="font-size:15px;margin-bottom:12px">📅 Historie cyklů</h3>
         <div id="cycleHistory"></div>
       </div>
+
+      <!-- WELLNESS TIPS -->
+      <div style="margin-top:20px;padding:16px;background:var(--card);border-radius:12px;border:1px solid var(--border)">
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:12px">Tip pro dnešní den</h3>
+        <div id="wellnessTip" style="font-size:13px;line-height:1.6;color:var(--text)"></div>
+      </div>
     </div>
 
     <!-- AI TAB -->
@@ -1197,6 +1204,10 @@ body {
             <label>Věk</label>
             <input type="number" class="setting-select" id="userAge" placeholder="25" min="12" max="60" onchange="saveSettings()" style="text-align:right;border:none;background:transparent;font-size:14px;color:var(--text);width:60px">
           </div>
+          <div class="setting-item">
+            <label>Připomínka na gynekologa</label>
+            <input type="date" id="gynoDate" onchange="saveSettings()" style="text-align:right;border:none;background:transparent;font-size:14px;color:var(--text)">
+          </div>
           <div class="setting-item" style="border-top:1px solid var(--border);margin-top:8px;padding-top:16px">
             <button onclick="logout()" style="width:100%;padding:12px;background:none;border:1px solid #e55;color:#e55;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Odhlasit se</button>
           </div>
@@ -1219,6 +1230,13 @@ body {
           <div class="setting-item">
             <label>Tmavý režim</label>
             <div class="toggle" id="darkToggle" onclick="toggleDarkMode()"></div>
+          </div>
+          <div class="setting-item">
+            <label>Jazyk / Language</label>
+            <select id="langSelect" onchange="changeLang(this.value)" style="border:none;background:transparent;font-size:14px;color:var(--text);text-align:right">
+              <option value="cs">Čeština</option>
+              <option value="en">English</option>
+            </select>
           </div>
         </div>
 
@@ -1597,6 +1615,94 @@ function checkOnboarding() {
   }
 }
 
+// ========== WELLNESS TIPS ==========
+function updateWellnessTip() {
+  var tips = {
+    menstruace: [
+      'Dej si teplý čaj a odpočívej. Tvoje tělo teď potřebuje regeneraci.',
+      'Lehké protažení nebo jóga ti pomůžou s křečemi.',
+      'Doplň železo - tmavá čokoláda, špenát, čočka.',
+      'Teplý obklad na břicho zmírní bolest.',
+    ],
+    folikularni: [
+      'Energie roste! Ideální čas na intenzivnější trénink.',
+      'Tvůj metabolismus se zrychluje. Skvělý čas na nové návyky.',
+      'Estrogen stoupá - pleť a vlasy budou zářit.',
+      'Kreativita je na vrcholu. Využij to!',
+    ],
+    ovulace: [
+      'Jsi na energetickém vrcholu. Využij to na důležité schůzky.',
+      'Plodné dny - pokud plánuješ miminko, teď je ideální čas.',
+      'Pij hodně vody, tělo potřebuje hydrataci.',
+    ],
+    lutealni: [
+      'Progesteron stoupá - můžeš cítit únavu. Je to normální.',
+      'Omeř sladké a slané. Chuťovky nahraď oříšky a ovocem.',
+      'Magnézium ti pomůže s PMS. Banány, mandle, tmavá čokoláda.',
+      'Lehký pohyb jako procházka zlepší náladu.',
+    ],
+    pms: [
+      'PMS je za dveřmi. Buď na sebe hodná.',
+      'Vyhni se kofeinu a alkoholu, zhorší příznaky.',
+      'Teplá koupel před spaním pomůže s nespavostí.',
+      'Komunikuj s blízkými o tom, jak se cítíš.',
+    ]
+  };
+
+  var el = document.getElementById('wellnessTip');
+  if (!el) return;
+
+  var predictions = getPredictions();
+  var today = fmtDate(new Date());
+  var phase = 'folikularni';
+
+  if (dayData[today] && dayData[today].period) {
+    phase = 'menstruace';
+  } else if (predictions) {
+    var todayMs = new Date().getTime();
+    if (predictions.allCycles) {
+      for (var c of predictions.allCycles) {
+        if (c.ovulationDate === today) { phase = 'ovulace'; break; }
+        var fs = new Date(c.fertileStart).getTime();
+        var fe = new Date(c.fertileEnd).getTime();
+        if (todayMs >= fs && todayMs <= fe) { phase = 'ovulace'; break; }
+        var ps = new Date(c.pmsStart).getTime();
+        var pe = new Date(c.pmsEnd).getTime();
+        if (todayMs >= ps && todayMs <= pe) { phase = 'pms'; break; }
+      }
+    }
+  }
+
+  var phaseTips = tips[phase] || tips.folikularni;
+  var dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(),0,0)) / 86400000);
+  var tip = phaseTips[dayOfYear % phaseTips.length];
+
+  var phaseNames = {menstruace:'Menstruace',folikularni:'Folikulární fáze',ovulace:'Ovulace',lutealni:'Luteální fáze',pms:'PMS'};
+  var phaseColors = {menstruace:'#E8577D',folikularni:'#42A5F5',ovulace:'#66BB6A',lutealni:'#FFA726',pms:'#AB47BC'};
+
+  el.innerHTML = '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;color:#fff;background:' + (phaseColors[phase]||'#888') + ';margin-bottom:8px">' + (phaseNames[phase]||phase) + '</span><br>' + tip;
+}
+
+// ========== LANGUAGE TOGGLE ==========
+function changeLang(lang) {
+  settings.language = lang;
+  saveData();
+  var tr = {
+    cs: {cal:'Kalendář',stats:'Statistiky',ai:'AI',community:'Komunita',profile:'Profil',partner:'Partner'},
+    en: {cal:'Calendar',stats:'Stats',ai:'AI',community:'Community',profile:'Profile',partner:'Partner'}
+  };
+  var t = tr[lang] || tr.cs;
+  var navItems = document.querySelectorAll('.nav-item');
+  var labels = [t.cal, t.stats, t.ai, t.community, t.profile, t.partner];
+  navItems.forEach(function(item, i) {
+    if (labels[i]) {
+      var icon = item.querySelector('.icon');
+      var iconText = icon ? icon.textContent : '';
+      item.innerHTML = '<span class="icon">' + iconText + '</span>' + labels[i];
+    }
+  });
+}
+
 // ========== INIT ==========
 function init() {
   checkAuth();
@@ -1611,6 +1717,8 @@ function init() {
   applyContraceptionUI();
   if (settings.userName) document.getElementById('userName').value = settings.userName;
   if (settings.userAge) document.getElementById('userAge').value = settings.userAge;
+  if (settings.gynoDate) document.getElementById('gynoDate').value = settings.gynoDate;
+  if (settings.language) { document.getElementById('langSelect').value = settings.language; changeLang(settings.language); }
 
   // Check unread notifications
   const unread = notifications.filter(n => !n.read).length;
@@ -1654,6 +1762,7 @@ function saveSettings() {
   settings.pillTime = document.getElementById('pillTime').value;
   settings.iudExpiry = document.getElementById('iudExpiry').value;
   settings.partnerEmail = document.getElementById('partnerEmail').value;
+  settings.gynoDate = document.getElementById('gynoDate').value;
   applyContraceptionUI();
   saveData();
 }
@@ -1857,6 +1966,7 @@ function renderCalendar() {
     el.onclick = () => openDayPanel(dateStr);
     container.appendChild(el);
   }
+  updateWellnessTip();
 }
 
 // ========== PREDICTIONS ENGINE ==========
