@@ -512,4 +512,106 @@ Data uživatelky:
   }
 });
 
+// Email notifications - check and send reminders
+app.post('/api/notifications/check', requireAuth, async (req, res) => {
+  try {
+    const userData = await pool.query('SELECT settings, day_data FROM mc_user_data WHERE user_id = $1', [req.session.userId]);
+    const user = await pool.query('SELECT email, name FROM mc_users WHERE id = $1', [req.session.userId]);
+    if (!userData.rows.length || !user.rows.length) return res.json({ sent: false });
+
+    const settings = userData.rows[0].settings || {};
+    const dayData = userData.rows[0].day_data || {};
+    const email = user.rows[0].email;
+    const name = user.rows[0].name || '';
+
+    // Find last period start
+    const periodDays = Object.keys(dayData).filter(k => dayData[k].period).sort();
+    if (periodDays.length === 0) return res.json({ sent: false });
+
+    // Calculate next period
+    const cycleLen = settings.cycleLength || 28;
+    const lastStart = new Date(periodDays[periodDays.length - 1]);
+    // Find actual cycle start (first day of last period)
+    let cycleStart = new Date(lastStart);
+    while (periodDays.includes(fmtDateServer(new Date(cycleStart.getTime() - 86400000)))) {
+      cycleStart.setDate(cycleStart.getDate() - 1);
+    }
+
+    const nextPeriod = new Date(cycleStart);
+    nextPeriod.setDate(nextPeriod.getDate() + cycleLen);
+
+    const today = new Date();
+    const daysUntil = Math.round((nextPeriod - today) / 86400000);
+
+    let sent = false;
+    if (daysUntil >= 1 && daysUntil <= 3) {
+      // Send reminder
+      try {
+        await transporter.sendMail({
+          from: '"MůjCyklus" <' + (process.env.SMTP_USER || 'honza@hofo.cz') + '>',
+          to: email,
+          subject: 'Menstruace za ' + daysUntil + (daysUntil === 1 ? ' den' : ' dny'),
+          html: '<div style="font-family:sans-serif;max-width:400px;margin:0 auto;padding:32px;text-align:center">' +
+            '<h2 style="color:#E8577D">MůjCyklus</h2>' +
+            '<p>Ahoj' + (name ? ' ' + name : '') + ',</p>' +
+            '<p>Podle tvých dat by měla menstruace začít za <strong>' + daysUntil + (daysUntil === 1 ? ' den' : ' dny') + '</strong>.</p>' +
+            '<p style="color:#888;font-size:13px;margin-top:20px">Toto je automatické upozornění z aplikace MůjCyklus.</p>' +
+            '</div>'
+        });
+        sent = true;
+      } catch (emailErr) {
+        console.error('Notification email error:', emailErr);
+      }
+    }
+
+    res.json({ sent, daysUntil, nextPeriod: nextPeriod.toISOString().split('T')[0] });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Chyba' });
+  }
+});
+
+function fmtDateServer(d) {
+  return d.toISOString().split('T')[0];
+}
+
+// PDF-like export (HTML for printing)
+app.get('/api/export/pdf', requireAuth, async (req, res) => {
+  try {
+    const userData = await pool.query('SELECT settings, day_data FROM mc_user_data WHERE user_id = $1', [req.session.userId]);
+    const user = await pool.query('SELECT email, name, age FROM mc_users WHERE id = $1', [req.session.userId]);
+    if (!userData.rows.length) return res.send('Žádná data');
+
+    const settings = userData.rows[0].settings || {};
+    const dayData = userData.rows[0].day_data || {};
+    const u = user.rows[0] || {};
+
+    const periodDays = Object.keys(dayData).filter(k => dayData[k].period).sort();
+    const symptomDays = Object.entries(dayData).filter(([k,v]) => v.symptoms && v.symptoms.length > 0).map(([k,v]) => k + ': ' + v.symptoms.join(', ')).slice(-20);
+    const moodDays = Object.entries(dayData).filter(([k,v]) => v.mood).map(([k,v]) => k + ': ' + v.mood).slice(-20);
+
+    res.send('<!DOCTYPE html><html><head><meta charset="utf-8"><title>MůjCyklus - Export</title>' +
+      '<style>body{font-family:Arial,sans-serif;max-width:700px;margin:40px auto;padding:20px;color:#333}' +
+      'h1{color:#E8577D;font-size:24px}h2{font-size:16px;margin-top:24px;border-bottom:1px solid #eee;padding-bottom:8px}' +
+      'table{width:100%;border-collapse:collapse;margin:12px 0}td,th{padding:8px 12px;border:1px solid #ddd;text-align:left;font-size:13px}' +
+      'th{background:#f5f5f5}p{font-size:14px;line-height:1.6}.print-btn{background:#E8577D;color:#fff;border:none;padding:12px 24px;border-radius:8px;cursor:pointer;font-size:14px}' +
+      '@media print{.print-btn{display:none}}</style></head><body>' +
+      '<button class="print-btn" onclick="window.print()">Vytisknout / Uložit PDF</button>' +
+      '<h1>MůjCyklus - Zdravotní report</h1>' +
+      '<p>Datum exportu: ' + new Date().toLocaleDateString('cs-CZ') + '</p>' +
+      '<table><tr><th>Jméno</th><td>' + (u.name || '-') + '</td></tr>' +
+      '<tr><th>Věk</th><td>' + (u.age || '-') + '</td></tr>' +
+      '<tr><th>Email</th><td>' + (u.email || '-') + '</td></tr>' +
+      '<tr><th>Délka cyklu</th><td>' + (settings.cycleLength || 28) + ' dní</td></tr>' +
+      '<tr><th>Délka menstruace</th><td>' + (settings.periodLength || 5) + ' dní</td></tr></table>' +
+      '<h2>Záznamy menstruace (posledních 30)</h2><p>' + (periodDays.slice(-30).join(', ') || 'Žádné záznamy') + '</p>' +
+      '<h2>Symptomy (posledních 20)</h2>' + (symptomDays.length > 0 ? '<ul>' + symptomDays.map(s => '<li>' + s + '</li>').join('') + '</ul>' : '<p>Žádné záznamy</p>') +
+      '<h2>Nálady (posledních 20)</h2>' + (moodDays.length > 0 ? '<ul>' + moodDays.map(s => '<li>' + s + '</li>').join('') + '</ul>' : '<p>Žádné záznamy</p>') +
+      '<p style="margin-top:32px;color:#888;font-size:12px">Vygenerováno aplikací MůjCyklus. Tento report nenahrazuje lékařské vyšetření.</p>' +
+      '</body></html>');
+  } catch (e) {
+    res.status(500).send('Chyba při generování reportu');
+  }
+});
+
 app.listen(PORT, () => console.log(`MujCyklus server on port ${PORT}`));

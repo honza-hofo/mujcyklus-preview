@@ -982,6 +982,32 @@ body {
   </div>
 </div>
 
+<!-- ONBOARDING -->
+<div id="onboardingOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center">
+<div style="background:var(--card);border-radius:16px;padding:32px;max-width:400px;width:90%;max-height:80vh;overflow-y:auto">
+  <div id="ob-step1">
+    <h2 style="font-size:20px;font-weight:700;margin-bottom:4px">Vítej v MůjCyklus!</h2>
+    <p style="color:var(--gray);font-size:14px;margin-bottom:24px">Pár otázek pro přesné predikce.</p>
+    <div style="margin-bottom:16px">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">Kdy začala tvoje poslední menstruace?</label>
+      <input type="date" id="obLastPeriod" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;background:var(--bg);color:var(--text)">
+    </div>
+    <div style="margin-bottom:16px">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">Kolik dní obvykle trvá tvůj cyklus?</label>
+      <input type="range" id="obCycleLen" min="21" max="40" value="28" oninput="document.getElementById('obCycleLenVal').textContent=this.value+' dní'" style="width:100%">
+      <span id="obCycleLenVal" style="font-size:13px;color:var(--gray)">28 dní</span>
+    </div>
+    <div style="margin-bottom:16px">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">Kolik dní obvykle trvá menstruace?</label>
+      <input type="range" id="obPeriodLen" min="2" max="8" value="5" oninput="document.getElementById('obPeriodLenVal').textContent=this.value+' dní'" style="width:100%">
+      <span id="obPeriodLenVal" style="font-size:13px;color:var(--gray)">5 dní</span>
+    </div>
+    <button onclick="finishOnboarding()" style="width:100%;padding:14px;background:#E8577D;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:8px">Začít sledovat</button>
+    <button onclick="document.getElementById('onboardingOverlay').style.display='none'" style="width:100%;padding:10px;background:none;border:none;color:var(--gray);font-size:13px;cursor:pointer;margin-top:8px;font-family:inherit">Přeskočit</button>
+  </div>
+</div>
+</div>
+
 <div id="app">
   <!-- Header -->
   <div class="header">
@@ -1177,6 +1203,12 @@ body {
           <div class="setting-item" style="margin-top:4px">
             <button onclick="exportData()" style="width:100%;padding:12px;background:none;border:1px solid #E8577D;color:#E8577D;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">Exportovat data (JSON)</button>
           </div>
+          <div class="setting-item" style="margin-top:4px">
+            <button onclick="window.open('/api/export/pdf','_blank')" style="width:100%;padding:12px;background:none;border:1px solid #E8577D;color:#E8577D;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">Export pro lékaře (PDF)</button>
+          </div>
+          <div class="setting-item" style="margin-top:4px">
+            <button onclick="checkNotifications()" style="width:100%;padding:12px;background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">Odeslat připomínku na email</button>
+          </div>
           <div class="setting-item" style="margin-top:8px">
             <button onclick="deleteAccount()" style="width:100%;padding:12px;background:none;border:1px solid #ccc;color:#888;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">Smazat účet a data</button>
           </div>
@@ -1354,6 +1386,14 @@ body {
       <div class="section-title">Symptomy</div>
       <div class="symptoms-grid" id="symptomsGrid"></div>
 
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:8px">Váha (kg)</label>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input type="number" id="weightInput" step="0.1" min="30" max="200" placeholder="65.0" style="flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:16px;font-family:inherit;background:var(--bg);color:var(--text);text-align:center" onchange="saveWeight()">
+          <span style="font-size:13px;color:var(--gray)">kg</span>
+        </div>
+      </div>
+
       <div class="section-title">Bazální teplota</div>
       <div class="temp-input-row">
         <span style="font-size:20px">🌡️</span>
@@ -1515,6 +1555,46 @@ function aiShowResponse(text) {
   const formatted = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
   chat.innerHTML += '<div style="margin-bottom:12px"><span style="display:inline-block;background:var(--card-bg);border:1px solid var(--border);padding:12px 16px;border-radius:12px 12px 12px 2px;font-size:13px;line-height:1.6;max-width:90%;color:var(--dark)">' + formatted + '</span></div>';
   chat.scrollTop = chat.scrollHeight;
+}
+
+function saveWeight() {
+  var w = parseFloat(document.getElementById('weightInput').value);
+  if (!w || !state.selectedDate) return;
+  if (!dayData[state.selectedDate]) dayData[state.selectedDate] = {};
+  dayData[state.selectedDate].weight = w;
+  saveData();
+}
+
+function finishOnboarding() {
+  var lastPeriod = document.getElementById('obLastPeriod').value;
+  var cycleLen = parseInt(document.getElementById('obCycleLen').value);
+  var periodLen = parseInt(document.getElementById('obPeriodLen').value);
+
+  settings.cycleLength = cycleLen;
+  settings.periodLength = periodLen;
+
+  if (lastPeriod) {
+    // Mark period days
+    var d = new Date(lastPeriod);
+    for (var i = 0; i < periodLen; i++) {
+      var key = fmtDate(d);
+      if (!dayData[key]) dayData[key] = {};
+      dayData[key].period = true;
+      d.setDate(d.getDate() + 1);
+    }
+  }
+
+  document.getElementById('onboardingOverlay').style.display = 'none';
+  saveData();
+  renderCalendar();
+  updateStats();
+}
+
+function checkOnboarding() {
+  var hasPeriodData = Object.values(dayData).some(function(d) { return d.period; });
+  if (!hasPeriodData) {
+    document.getElementById('onboardingOverlay').style.display = 'flex';
+  }
 }
 
 // ========== INIT ==========
@@ -1968,6 +2048,10 @@ function openDayPanel(dateStr) {
   // Temp
   document.getElementById('tempInput').value = dd.temp || '';
 
+  // Weight
+  var weightInput = document.getElementById('weightInput');
+  if (weightInput) weightInput.value = (dd && dd.weight) ? dd.weight : '';
+
   // Notes
   document.getElementById('notesArea').value = dd.notes || '';
 
@@ -2045,6 +2129,8 @@ function saveDayData() {
   dd.symptoms = activeSymptoms;
   dd.temp = document.getElementById('tempInput').value;
   dd.notes = document.getElementById('notesArea').value;
+  var weightVal = parseFloat(document.getElementById('weightInput').value);
+  if (weightVal) dd.weight = weightVal;
   dayData[state.selectedDate] = dd;
 
   saveData();
@@ -2909,6 +2995,7 @@ async function loadFromServer() {
     if (settings.userName) document.getElementById('userName').value = settings.userName;
     if (settings.userAge) document.getElementById('userAge').value = settings.userAge;
     loadShareSettings();
+    checkOnboarding();
   } catch (e) {}
 }
 
@@ -2930,6 +3017,22 @@ async function logout() {
   } catch (e) {}
   localStorage.clear();
   window.location.reload();
+}
+
+async function checkNotifications() {
+  try {
+    var headers = {'Content-Type': 'application/json'};
+    if (window._csrf) headers['X-CSRF-Token'] = window._csrf;
+    var resp = await fetch('/api/notifications/check', { method: 'POST', headers });
+    var data = await resp.json();
+    if (data.sent) {
+      alert('Připomínka odeslána na tvůj email! Menstruace za ' + data.daysUntil + (data.daysUntil === 1 ? ' den.' : ' dny.'));
+    } else if (data.daysUntil !== undefined) {
+      alert('Menstruace za ' + data.daysUntil + ' dní. Připomínka se posílá 1-3 dny předem.');
+    } else {
+      alert('Nedostatek dat pro výpočet. Zaznamenej svou menstruaci v kalendáři.');
+    }
+  } catch(e) { alert('Chyba spojení.'); }
 }
 
 async function deleteAccount() {
