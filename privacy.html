@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#E8577D">
+<title>Zásady ochrany osobních údajů - MůjCyklus</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Poppins', sans-serif; color: #333; line-height: 1.7; background: #FAFAFA; }
+  .header { background: linear-gradient(135deg, #E8577D, #F48FB1); padding: 32px 20px; text-align: center; color: #fff; }
+  .header h1 { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
+  .header p { font-size: 14px; opacity: 0.9; }
+  .container { max-width: 800px; margin: 0 auto; padding: 32px 20px 60px; }
+  h2 { color: #E8577D; font-size: 20px; font-weight: 600; margin: 32px 0 12px; padding-bottom: 8px; border-bottom: 2px solid #FCE4EC; }
+  h3 { color: #333; font-size: 16px; font-weight: 600; margin: 20px 0 8px; }
+  p, li { font-size: 14px; margin-bottom: 8px; }
+  ul, ol { padding-left: 24px; margin-bottom: 12px; }
+  li { margin-bottom: 4px; }
+  .highlight { background: #FCE4EC; border-left: 4px solid #E8577D; padding: 16px; border-radius: 0 8px 8px 0; margin: 16px 0; }
+  .highlight strong { color: #E8577D; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th, td { padding: 10px 12px; border: 1px solid #eee; text-align: left; }
+  th { background: #FCE4EC; color: #E8577D; font-weight: 600; }
+  .footer { text-align: center; padding: 32px 20px; color: #888; font-size: 12px; border-top: 1px solid #eee; margin-top: 40px; }
+  a { color: #E8577D; }
+  .back-link { display: inline-block; margin: 20px 0; padding: 10px 24px; background: #E8577D; color: #fff; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: 600; }
+  @media (max-width: 600px) { .container { padding: 20px 16px 40px; } h2 { font-size: 18px; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Zasady ochrany osobnich udaju</h1>
+  <p>MujCyklus - Sledovani menstruacniho cyklu</p>
+</div>
+
+<div class="container">
+  <a href="/app" class="back-link">Zpet do aplikace</a>
+
+  <p><strong>Ucinnost od:</strong> 30. 3. 2026<br>
+  <strong>Posledni aktualizace:</strong> 30. 3. 2026</p>
+
+  <div class="highlight">
+    <strong>Dulezite upozorneni:</strong> Aplikace MujCyklus zpracovava udaje o vasem zdravotnim stavu (menstruacni cyklus, symptomy, nalady), ktere jsou zvlastni kategorii osobnich udaju podle cl. 9 Obecneho narizeni o ochrane osobnich udaju (GDPR). Pro zpracovani techto udaju vyzadujeme vas <strong>vyslovny souhlas</strong> dle cl. 9 odst. 2 pism. a) GDPR.
+  </div>
+
+  <h2>1. Spravce osobnich udaju</h2>
+  <table>
+    <tr><th>Spolecnost</th><td>HOFO Media Group s.r.o.</td></tr>
+    <tr><th>ICO</th><td>07900171</td></tr>
+    <tr><th>Sidlo</th><td>Ceska republika</td></tr>
+    <tr><th>Email</th><td><a href="mailto:honza@hofo.cz">honza@hofo.cz</a></td></tr>
+    <tr><th>Web</th><td>mujcyklus.cz</td></tr>
+  </table>
+
+  <h2>2. Jake udaje shromazdujeme</h2>
+
+  <h3>2.1 Udaje o uctu</h3>
+  <ul>
+    <li>Emailova adresa (pro prihlaseni a komunikaci)</li>
+    <li>Heslo (ulozeno jako bcrypt hash, nikdy v citelne podobe)</li>
+    <li>Jmeno (volitelne)</li>
+    <li>Vek (volitelne)</li>
+  </ul>
+
+  <h3>2.2 Udaje o zdravotnim stavu (zvlastni kategorie - cl. 9 GDPR)</h3>
+  <div class="highlight">
+    Nasledujici udaje jsou <strong>zvlastni kategorii osobnich udaju</strong> podle cl. 9 GDPR a jsou zpracovavany vyhradne na zaklade vaseho vyslovneho souhlasu.
+  </div>
+  <ul>
+    <li>Zaznamy o menstruaci (datum, delka, intenzita)</li>
+    <li>Delka menstruacniho cyklu</li>
+    <li>Nalady a emocionalni stavy</li>
+    <li>Telesne symptomy (bolesti, nadymani, akne atd.)</li>
+    <li>Informace o antikoncepci</li>
+    <li>Udaje o plodnosti a ovulaci (vypoctene)</li>
+    <li>Vysledky AI analyzy cyklu</li>
+  </ul>
+
+  <h3>2.3 Udaje o sdileni s partnerem</h3>
+  <ul>
+    <li>Kod pro sdileni</li>
+    <li>Email partnera (volitelne)</li>
+    <li>Nastaveni sdileni (co partner vidi)</li>
+  </ul>
+
+  <h3>2.4 Technicke udaje</h3>
+  <ul>
+    <li>IP adresa (pro bezpecnost a zaznamy souhlasu)</li>
+    <li>Udaje o relaci (session cookie)</li>
+    <li>Cas pristupu</li>
+  </ul>
+
+  <h2>3. Pravni zaklad zpracovani</h2>
+  <table>
+    <tr><th>Kategorie udaju</th><th>Pravni zaklad</th><th>Clanek GDPR</th></tr>
+    <tr><td>Udaje o uctu (email, heslo)</td><td>Plneni smlouvy</td><td>Cl. 6 odst. 1 pism. b)</td></tr>
+    <tr><td>Udaje o zdravotnim stavu</td><td><strong>Vyslovny souhlas</strong></td><td><strong>Cl. 9 odst. 2 pism. a)</strong></td></tr>
+    <tr><td>Technicke udaje (IP, cookies)</td><td>Opravneny zajem (bezpecnost)</td><td>Cl. 6 odst. 1 pism. f)</td></tr>
+    <tr><td>Zaznamy souhlasu</td><td>Pravni povinnost</td><td>Cl. 6 odst. 1 pism. c)</td></tr>
+  </table>
+
+  <h2>4. Ucely zpracovani</h2>
+  <ul>
+    <li><strong>Provoz aplikace:</strong> Sledovani menstruacniho cyklu, predikce, zobrazeni statistik</li>
+    <li><strong>AI analyza:</strong> Personalizovana analyza cyklu pomoci umelou inteligence (Anthropic Claude)</li>
+    <li><strong>Parovy mod:</strong> Sdileni vybranych udaju s partnerem</li>
+    <li><strong>Komunikace:</strong> Overovaci emaily, upozorneni na blizici se menstruaci</li>
+    <li><strong>Bezpecnost:</strong> Ochrana proti neautorizovanemu pristupu, rate limiting</li>
+    <li><strong>Pravni povinnost:</strong> Uchovavani zaznamu souhlasu dle GDPR</li>
+  </ul>
+
+  <h2>5. Doba uchovavani udaju</h2>
+  <table>
+    <tr><th>Typ udaju</th><th>Doba uchovavani</th></tr>
+    <tr><td>Ucet a profilove udaje</td><td>Do smazani uctu + 30 dni</td></tr>
+    <tr><td>Data o cyklu (menstruace, nalady, symptomy)</td><td>Do smazani uctu</td></tr>
+    <tr><td>Vysledky AI analyzy</td><td>12 mesicu od vytvoreni</td></tr>
+    <tr><td>Sdileni s partnerem</td><td>Do odvolani / smazani uctu</td></tr>
+    <tr><td>Session cookies</td><td>12 mesicu</td></tr>
+    <tr><td>Zaznamy souhlasu (GDPR)</td><td>5 let od udeleni</td></tr>
+    <tr><td>Zaznamy o prihlaseni (bezpecnostni)</td><td>24 hodin</td></tr>
+  </table>
+
+  <h2>6. Prijemci a treti strany</h2>
+  <p>Vase udaje mohou byt sdileny s nasledujicimi tretimi stranami:</p>
+  <table>
+    <tr><th>Treti strana</th><th>Ucel</th><th>Typ udaju</th><th>Lokace</th></tr>
+    <tr><td><strong>Supabase Inc.</strong></td><td>Ulozeni dat (databaze)</td><td>Vsechna data uctu a cyklu</td><td>EU/USA (sifrovane)</td></tr>
+    <tr><td><strong>Anthropic PBC</strong></td><td>AI analyza cyklu</td><td>Anonymizovana data cyklu (bez emailu)</td><td>USA</td></tr>
+    <tr><td><strong>Google LLC</strong></td><td>Odesilani emailu (SMTP)</td><td>Emailova adresa, obsah emailu</td><td>USA</td></tr>
+    <tr><td><strong>Render Inc.</strong></td><td>Hosting aplikace</td><td>Technicka data (IP, requesty)</td><td>USA</td></tr>
+  </table>
+
+  <div class="highlight">
+    Pro prenosy do USA jsou zajisteny dostatecne zaruky v souladu s cl. 46 GDPR (standardni smluvni dolozky). Antropic zpracovava data cyklu bez identifikatoru uzivatele.
+  </div>
+
+  <h2>7. Vase prava</h2>
+  <p>Jako subjekt udaju mate nasledujici prava:</p>
+  <table>
+    <tr><th>Pravo</th><th>Popis</th><th>Clanek GDPR</th></tr>
+    <tr><td><strong>Pravo na pristup</strong></td><td>Ziskat informace o zpracovavanych udajich</td><td>Cl. 15</td></tr>
+    <tr><td><strong>Pravo na opravu</strong></td><td>Opravit nepresne udaje</td><td>Cl. 16</td></tr>
+    <tr><td><strong>Pravo na vymazani</strong></td><td>Pozadat o smazani udaju ("pravo byt zapomenut")</td><td>Cl. 17</td></tr>
+    <tr><td><strong>Pravo na omezeni</strong></td><td>Omezit zpracovani udaju</td><td>Cl. 18</td></tr>
+    <tr><td><strong>Pravo na prenositelnost</strong></td><td>Ziskat udaje ve strukturovanem formatu (JSON)</td><td>Cl. 20</td></tr>
+    <tr><td><strong>Pravo na odvolani souhlasu</strong></td><td>Kdykoliv odvolat souhlas se zpracovanim</td><td>Cl. 7 odst. 3</td></tr>
+    <tr><td><strong>Pravo podat stiznost</strong></td><td>Podat stiznost u dozoroveho uradu</td><td>Cl. 77</td></tr>
+  </table>
+
+  <h3>Jak uplatnit prava</h3>
+  <ul>
+    <li><strong>V aplikaci:</strong> Profil &rarr; Sprava osobnich udaju &rarr; Exportovat / Smazat ucet</li>
+    <li><strong>Emailem:</strong> <a href="mailto:honza@hofo.cz">honza@hofo.cz</a> (odpovime do 30 dnu)</li>
+  </ul>
+
+  <h2>8. Dozorovy urad</h2>
+  <p>Mate pravo podat stiznost u dozoroveho uradu:</p>
+  <table>
+    <tr><th>Urad</th><td>Urad pro ochranu osobnich udaju (UOOU)</td></tr>
+    <tr><th>Adresa</th><td>Pplk. Sochora 27, 170 00 Praha 7</td></tr>
+    <tr><th>Email</th><td><a href="mailto:posta@uoou.cz">posta@uoou.cz</a></td></tr>
+    <tr><th>Web</th><td><a href="https://www.uoou.cz" target="_blank">www.uoou.cz</a></td></tr>
+    <tr><th>Telefon</th><td>+420 234 665 111</td></tr>
+  </table>
+
+  <h2>9. Vekove omezeni</h2>
+  <div class="highlight">
+    Aplikace MujCyklus je urcena pro osoby starsí 15 let. Pro zpracovani osobnich udaju osob mladsich 15 let je vyzadovan souhlas zakonneho zastupce v souladu s <strong>&sect;7 zakona c. 110/2019 Sb.</strong> o zpracovani osobnich udaju.
+  </div>
+
+  <h2>10. Cookies a technicke soubory</h2>
+  <h3>Nezbytne cookies</h3>
+  <table>
+    <tr><th>Nazev</th><th>Ucel</th><th>Platnost</th></tr>
+    <tr><td>connect.sid</td><td>Session cookie pro prihlaseni</td><td>30 dnu</td></tr>
+  </table>
+  <h3>Lokalni uloziste (localStorage)</h3>
+  <table>
+    <tr><th>Klic</th><th>Ucel</th></tr>
+    <tr><td>mujcyklus_settings</td><td>Lokalni cache nastaveni</td></tr>
+    <tr><td>mujcyklus_daydata</td><td>Lokalni cache dat o cyklu</td></tr>
+    <tr><td>mujcyklus_cookie_consent</td><td>Stav souhlasu s cookies</td></tr>
+  </table>
+  <p>Aplikace nepouziva analyticke ani marketingove cookies tretich stran.</p>
+
+  <h2>11. Zabezpeceni</h2>
+  <p>Pro ochranu vasich udaju vyuzivame nasledujici opatreni:</p>
+  <ul>
+    <li>Sifrovane pripojeni (HTTPS/TLS)</li>
+    <li>Hesla hashovana algoritmem bcrypt (12 kol)</li>
+    <li>CSRF ochrana (tokenova)</li>
+    <li>Rate limiting na prihlaseni (max 10 pokusu / 15 minut)</li>
+    <li>HttpOnly a Secure cookies</li>
+    <li>Emailove overeni pri registraci</li>
+    <li>Sifrovane ulozeni v databazi (Supabase SSL)</li>
+  </ul>
+
+  <h2>12. Oznameni o poruseni zabezpeceni</h2>
+  <p>V pripade poruseni zabezpeceni osobnich udaju:</p>
+  <ul>
+    <li>Informujeme <strong>UOOU do 72 hodin</strong> od zjisteni (cl. 33 GDPR)</li>
+    <li>Pokud hrozí vysoke riziko pro vase prava, <strong>informujeme vas primo</strong> (cl. 34 GDPR)</li>
+    <li>Zavedeme opatreni k minimalizaci dopadu</li>
+  </ul>
+
+  <h2>13. Automatizovane rozhodovani a profilovani</h2>
+  <p>Aplikace provadi automatizovany vypocet predikci cyklu (dalsi menstruace, plodne dny) na zaklade vasich dat. AI analyza (Anthropic Claude) poskytuje doporuceni, ale <strong>nejedna se o rozhodovani s pravnimi ucinky</strong>. Vsechny AI vysledky jsou informativni a nenahrazuji lekarske vysetreni.</p>
+
+  <h2>14. Zmeny zasad</h2>
+  <p>Tyto zasady muzeme aktualizovat. O vyznamnych zmenach vas informujeme emailem nebo oznamenim v aplikaci. Doporucujeme pravidelne kontrolovat tuto stranku.</p>
+
+  <div class="footer">
+    <p>&copy; 2026 HOFO Media Group s.r.o. Vsechna prava vyhrazena.</p>
+    <p>MujCyklus - Chytry tracker menstruacniho cyklu</p>
+  </div>
+</div>
+
+</body>
+</html>

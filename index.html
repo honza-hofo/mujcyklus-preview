@@ -951,6 +951,23 @@ body {
       <div style="margin-bottom:12px">
         <input type="password" id="authPassword" placeholder="Heslo" required minlength="6" style="width:100%;padding:12px 16px;border:1px solid #e0e0e0;border-radius:8px;font-size:14px;font-family:inherit;outline:none">
       </div>
+      <div id="authAgeField" style="display:none;margin-bottom:12px">
+        <input type="number" id="authAge" placeholder="Věk" min="15" max="99" style="width:100%;padding:12px 16px;border:1px solid #e0e0e0;border-radius:8px;font-size:14px;font-family:inherit;outline:none">
+      </div>
+      <div id="gdprConsents" style="display:none;margin-bottom:16px">
+        <label style="display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;font-size:12px;color:#555;cursor:pointer;line-height:1.4">
+          <input type="checkbox" id="consentHealthData" style="margin-top:2px;min-width:16px;accent-color:#E8577D">
+          <span>Souhlasím se zpracováním osobních údajů včetně údajů o zdravotním stavu (menstruační cyklus) dle <a href="/privacy" target="_blank" style="color:#E8577D">zásad ochrany osobních údajů</a>. *</span>
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;font-size:12px;color:#555;cursor:pointer;line-height:1.4">
+          <input type="checkbox" id="consentTerms" style="margin-top:2px;min-width:16px;accent-color:#E8577D">
+          <span>Souhlasím s <a href="/podminky" target="_blank" style="color:#E8577D">obchodními podmínkami</a>. *</span>
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:8px;margin-bottom:4px;font-size:12px;color:#555;cursor:pointer;line-height:1.4">
+          <input type="checkbox" id="consentAge" style="margin-top:2px;min-width:16px;accent-color:#E8577D">
+          <span>Je mi 15 nebo více let. *</span>
+        </label>
+      </div>
       <button type="submit" id="authBtn" style="width:100%;padding:14px;background:#E8577D;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">Přihlásit se</button>
     </form>
     <p style="text-align:center;margin-top:16px;font-size:13px;color:#888">
@@ -1220,8 +1237,21 @@ body {
           <div class="setting-item" style="margin-top:4px">
             <button onclick="checkNotifications()" style="width:100%;padding:12px;background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">Odeslat připomínku na email</button>
           </div>
-          <div class="setting-item" style="margin-top:8px">
-            <button onclick="deleteAccount()" style="width:100%;padding:12px;background:none;border:1px solid #ccc;color:#888;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">Smazat účet a data</button>
+        </div>
+
+        <div class="setting-group">
+          <div class="setting-group-title">Správa osobních údajů (GDPR)</div>
+          <div class="setting-item" style="margin-top:4px">
+            <button onclick="gdprExportData()" style="width:100%;padding:12px;background:none;border:1px solid #E8577D;color:#E8577D;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">Exportovat všechna data (GDPR)</button>
+          </div>
+          <div class="setting-item" style="margin-top:4px">
+            <button onclick="gdprDeleteAccount()" style="width:100%;padding:12px;background:#e55;border:none;color:#fff;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:600">Smazat účet a všechna data</button>
+          </div>
+          <div class="setting-item" style="margin-top:4px">
+            <a href="/privacy" target="_blank" style="display:block;width:100%;padding:12px;text-align:center;color:#E8577D;font-size:13px;text-decoration:none;border:1px solid #eee;border-radius:8px">Zásady ochrany osobních údajů</a>
+          </div>
+          <div class="setting-item" style="margin-top:4px">
+            <a href="/podminky" target="_blank" style="display:block;width:100%;padding:12px;text-align:center;color:#E8577D;font-size:13px;text-decoration:none;border:1px solid #eee;border-radius:8px">Obchodní podmínky</a>
           </div>
         </div>
 
@@ -2986,6 +3016,8 @@ function toggleAuthMode() {
   document.getElementById('authToggleText').textContent = authMode === 'login' ? 'Nemáte účet?' : 'Už máte účet?';
   document.getElementById('authToggleLink').textContent = authMode === 'login' ? 'Zaregistrovat se' : 'Přihlásit se';
   document.getElementById('authNameField').style.display = authMode === 'register' ? 'block' : 'none';
+  document.getElementById('authAgeField').style.display = authMode === 'register' ? 'block' : 'none';
+  document.getElementById('gdprConsents').style.display = authMode === 'register' ? 'block' : 'none';
   document.getElementById('authError').style.display = 'none';
 }
 
@@ -2996,9 +3028,27 @@ async function handleAuth(e) {
   const name = document.getElementById('authName').value;
   const errEl = document.getElementById('authError');
 
+  // Validate GDPR consents for registration
+  if (authMode === 'register') {
+    const consentHealth = document.getElementById('consentHealthData').checked;
+    const consentTerms = document.getElementById('consentTerms').checked;
+    const consentAge = document.getElementById('consentAge').checked;
+    if (!consentHealth || !consentTerms || !consentAge) {
+      errEl.textContent = 'Pro registraci je nutné zaškrtnout všechny souhlasy.';
+      errEl.style.display = 'block';
+      return;
+    }
+  }
+
   try {
     const url = authMode === 'login' ? '/api/login' : '/api/register';
-    const body = authMode === 'login' ? { email, password } : { email, password, name };
+    const age = document.getElementById('authAge').value;
+    const body = authMode === 'login' ? { email, password } : {
+      email, password, name, age: age || undefined,
+      consent_terms: document.getElementById('consentTerms').checked,
+      consent_health_data: document.getElementById('consentHealthData').checked,
+      consent_age: document.getElementById('consentAge').checked
+    };
     const resp = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -3213,6 +3263,44 @@ async function handleForgot(e) {
   }
 }
 
+// ========== GDPR FUNCTIONS ==========
+async function gdprExportData() {
+  try {
+    const resp = await fetch('/api/gdpr/export-data');
+    if (!resp.ok) throw new Error('Export failed');
+    const data = await resp.json();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'mujcyklus_gdpr_export_' + fmtDate(new Date()) + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    alert('Chyba při exportu dat. Zkuste to prosím znovu.');
+  }
+}
+
+async function gdprDeleteAccount() {
+  if (!confirm('Opravdu chcete smazat svůj účet a VŠECHNA data?\n\nTato akce je nevratná a zahrnuje:\n- Profil a přihlašovací údaje\n- Všechna data o cyklu\n- Sdílení s partnerem\n- Záznamy souhlasů')) return;
+  if (!confirm('POSLEDNÍ VAROVÁNÍ: Všechna data budou trvale smazána. Chcete pokračovat?')) return;
+  try {
+    const headers = { 'Content-Type': 'application/json' };
+    if (window._csrf) headers['X-CSRF-Token'] = window._csrf;
+    const resp = await fetch('/api/gdpr/delete-account', { method: 'POST', headers });
+    const data = await resp.json();
+    if (data.ok) {
+      localStorage.clear();
+      alert('Váš účet a všechna data byla trvale smazána.');
+      window.location.reload();
+    } else {
+      alert(data.error || 'Chyba při mazání účtu');
+    }
+  } catch (e) {
+    alert('Chyba při mazání účtu. Zkuste to prosím znovu.');
+  }
+}
+
 // ========== SERVICE WORKER ==========
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});
@@ -3221,5 +3309,6 @@ if ('serviceWorker' in navigator) {
 // ========== START ==========
 init();
 </script>
+<script src="/cookie-consent.js"></script>
 </body>
 </html>

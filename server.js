@@ -74,6 +74,14 @@ async function initDB() {
         show_symptoms BOOLEAN DEFAULT false,
         created_at TIMESTAMP DEFAULT NOW()
       );
+      CREATE TABLE IF NOT EXISTS mc_gdpr_consents (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES mc_users(id) ON DELETE CASCADE,
+        consent_type VARCHAR(100) NOT NULL,
+        consented BOOLEAN DEFAULT false,
+        ip_address VARCHAR(45),
+        consented_at TIMESTAMP DEFAULT NOW()
+      );
     `);
     console.log('DB tables ready');
   } catch (e) {
@@ -154,16 +162,20 @@ function requireAuth(req, res, next) {
 // Register - step 1: send verification code
 app.post('/api/register', checkRateLimit, async (req, res) => {
   try {
-    const { email, password, name } = req.body;
+    const { email, password, name, age, consent_terms, consent_health_data, consent_age } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Email a heslo jsou povinné' });
     if (password.length < 6) return res.status(400).json({ error: 'Heslo musí mít alespoň 6 znaků' });
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Neplatný email' });
+    if (age && parseInt(age) < 15) return res.status(400).json({ error: 'Pro registraci musíte mít alespoň 15 let (§7 zákona 110/2019 Sb.)' });
+    if (!consent_terms) return res.status(400).json({ error: 'Musíte souhlasit s obchodními podmínkami' });
+    if (!consent_health_data) return res.status(400).json({ error: 'Pro sledování menstruačního cyklu je nutný výslovný souhlas se zpracováním údajů o zdravotním stavu (čl. 9 GDPR)' });
+    if (!consent_age) return res.status(400).json({ error: 'Musíte potvrdit, že vám je alespoň 15 let' });
 
     const existing = await pool.query('SELECT id FROM mc_users WHERE email = $1', [email.toLowerCase()]);
     if (existing.rows.length > 0) return res.status(400).json({ error: 'Tento email je již registrován' });
 
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    req.session.pendingReg = { email: email.toLowerCase(), password, name, code, expires: Date.now() + 15 * 60 * 1000 };
+    req.session.pendingReg = { email: email.toLowerCase(), password, name, age: age ? parseInt(age) : null, code, expires: Date.now() + 15 * 60 * 1000, consent_terms: true, consent_health_data: true, ip: req.ip };
 
     try {
       await sendVerifyEmail(email, code);
@@ -190,12 +202,28 @@ app.post('/api/verify', async (req, res) => {
 
     const hash = await bcrypt.hash(pending.password, 12);
     const result = await pool.query(
-      'INSERT INTO mc_users (email, password, name) VALUES ($1, $2, $3) RETURNING id',
-      [pending.email, hash, pending.name || null]
+      'INSERT INTO mc_users (email, password, name, age) VALUES ($1, $2, $3, $4) RETURNING id',
+      [pending.email, hash, pending.name || null, pending.age || null]
     );
     await pool.query('INSERT INTO mc_user_data (user_id) VALUES ($1)', [result.rows[0].id]);
 
-    req.session.userId = result.rows[0].id;
+    // Store GDPR consents
+    const userId = result.rows[0].id;
+    const ip = pending.ip || req.ip;
+    await pool.query(
+      'INSERT INTO mc_gdpr_consents (user_id, consent_type, consented, ip_address) VALUES ($1, $2, $3, $4)',
+      [userId, 'terms_of_service', true, ip]
+    );
+    await pool.query(
+      'INSERT INTO mc_gdpr_consents (user_id, consent_type, consented, ip_address) VALUES ($1, $2, $3, $4)',
+      [userId, 'health_data_processing', true, ip]
+    );
+    await pool.query(
+      'INSERT INTO mc_gdpr_consents (user_id, consent_type, consented, ip_address) VALUES ($1, $2, $3, $4)',
+      [userId, 'age_confirmation_15plus', true, ip]
+    );
+
+    req.session.userId = userId;
     req.session.email = pending.email;
     delete req.session.pendingReg;
     res.json({ ok: true, email: pending.email, csrfToken: req.session.csrfToken });
@@ -611,6 +639,102 @@ app.get('/api/export/pdf', requireAuth, async (req, res) => {
       '</body></html>');
   } catch (e) {
     res.status(500).send('Chyba při generování reportu');
+  }
+});
+
+// ========== GDPR ENDPOINTS ==========
+
+// Serve privacy policy and terms pages
+app.get('/privacy', (req, res) => res.sendFile(path.join(__dirname, 'privacy.html')));
+app.get('/podminky', (req, res) => res.sendFile(path.join(__dirname, 'podminky.html')));
+
+// GDPR: Delete account and all data
+app.post('/api/gdpr/delete-account', requireAuth, async (req, res) => {
+  try {
+    const userId = req.session.userId;
+    const email = req.session.email;
+    const ip = req.ip;
+
+    // Delete all related data in correct order (foreign keys)
+    await pool.query('DELETE FROM mc_partner_shares WHERE user_id = $1', [userId]);
+    await pool.query('DELETE FROM mc_user_data WHERE user_id = $1', [userId]);
+    await pool.query('DELETE FROM mc_gdpr_consents WHERE user_id = $1', [userId]);
+    await pool.query('DELETE FROM mc_login_attempts WHERE email = $1 OR ip = $2', [email, ip]);
+    await pool.query('DELETE FROM mc_users WHERE id = $1', [userId]);
+
+    req.session.destroy();
+    console.log(`GDPR: Account deleted for user ${userId} (${email})`);
+    res.json({ ok: true, message: 'Účet a všechna data byla trvale smazána.' });
+  } catch (e) {
+    console.error('GDPR delete error:', e);
+    res.status(500).json({ error: 'Chyba při mazání účtu' });
+  }
+});
+
+// GDPR: Export all user data (data portability - Art. 20)
+app.get('/api/gdpr/export-data', requireAuth, async (req, res) => {
+  try {
+    const userId = req.session.userId;
+
+    const user = await pool.query('SELECT id, email, name, age, created_at FROM mc_users WHERE id = $1', [userId]);
+    const userData = await pool.query('SELECT settings, day_data, notifications, updated_at FROM mc_user_data WHERE user_id = $1', [userId]);
+    const partnerShares = await pool.query('SELECT share_code, partner_email, show_period, show_fertile, show_moods, show_symptoms, created_at FROM mc_partner_shares WHERE user_id = $1', [userId]);
+    const consents = await pool.query('SELECT consent_type, consented, ip_address, consented_at FROM mc_gdpr_consents WHERE user_id = $1 ORDER BY consented_at', [userId]);
+
+    const exportData = {
+      data_controller: {
+        company: 'HOFO Media Group s.r.o.',
+        ico: '07900171',
+        email: 'honza@hofo.cz',
+        address: 'Česká republika'
+      },
+      export_info: {
+        exported_at: new Date().toISOString(),
+        gdpr_article: 'Čl. 20 GDPR - Právo na přenositelnost údajů',
+        format: 'JSON'
+      },
+      user_profile: user.rows[0] || {},
+      cycle_data: userData.rows[0] || {},
+      partner_shares: partnerShares.rows,
+      gdpr_consents: consents.rows
+    };
+
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', 'attachment; filename="mujcyklus_gdpr_export_' + new Date().toISOString().split('T')[0] + '.json"');
+    res.json(exportData);
+  } catch (e) {
+    console.error('GDPR export error:', e);
+    res.status(500).json({ error: 'Chyba při exportu dat' });
+  }
+});
+
+// GDPR: Get consent history
+app.get('/api/gdpr/consents', requireAuth, async (req, res) => {
+  try {
+    const consents = await pool.query(
+      'SELECT consent_type, consented, ip_address, consented_at FROM mc_gdpr_consents WHERE user_id = $1 ORDER BY consented_at DESC',
+      [req.session.userId]
+    );
+    res.json({ consents: consents.rows });
+  } catch (e) {
+    console.error('GDPR consents error:', e);
+    res.status(500).json({ error: 'Chyba při načítání souhlasů' });
+  }
+});
+
+// ========== CLEANUP ENDPOINT ==========
+app.post('/api/cleanup', async (req, res) => {
+  const cronSecret = req.headers['x-cron-secret'] || req.headers['authorization'];
+  if (!cronSecret || cronSecret !== process.env.CRON_SECRET) {
+    return res.status(403).json({ error: 'Unauthorized' });
+  }
+  try {
+    const result = await pool.query("DELETE FROM mc_login_attempts WHERE attempted_at < NOW() - INTERVAL '24 hours'");
+    console.log(`Cleanup: Deleted ${result.rowCount} old login attempts`);
+    res.json({ ok: true, deleted_login_attempts: result.rowCount });
+  } catch (e) {
+    console.error('Cleanup error:', e);
+    res.status(500).json({ error: 'Cleanup failed' });
   }
 });
 
